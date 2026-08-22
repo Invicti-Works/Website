@@ -63,6 +63,27 @@
     { "pattern": "www.invicti.works", "custom_domain": true }
   ],
 
+  // Non-secret configuration, in version control on purpose.
+  //
+  // `wrangler deploy` DELETES every plain-text var on the Worker that is not
+  // listed here -- Workers Builds runs it on every push, so anything typed into
+  // the dashboard's Variables panel survives only until the next deploy. That
+  // is documented behaviour, not a bug, and it is what made CMS sign-in fail
+  // with MISCONFIGURED_CLIENT: the client ID had been set in the dashboard and
+  // was gone by the next build.
+  //
+  // Secrets are different -- Wrangler never deletes an encrypted variable -- so
+  // GITHUB_CLIENT_SECRET and RESEND_API_KEY stay in the dashboard and must NOT
+  // be added here. See docs/SETUP.md steps 5 and 6.
+  //
+  // A GitHub OAuth client ID is public by design: it is sent in the authorize
+  // URL and visible to anyone who signs in. Only the secret is a secret.
+  "vars": {
+    "ALLOWED_DOMAINS": "invicti.works",
+    "CONTACT_TO": "info@invicti.works",
+    "CONTACT_FROM": "Invicti.Works website <website@invicti.works>"
+  },
+
   "observability": {
     "enabled": true
   }

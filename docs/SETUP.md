@@ -199,13 +199,35 @@ Two things remain, and both need a browser.
 
 ### 5b. Give the Worker its credentials
 
-Cloudflare → **Workers & Pages → websitebuild → Settings → Variables and Secrets**:
+**Read this before typing anything into the dashboard.** There are two kinds of
+variable and they live in different places:
 
-| Name | Value | Type |
+| Name | Where it goes | Why |
 | --- | --- | --- |
-| `GITHUB_CLIENT_ID` | Client ID from 5a | Text |
-| `GITHUB_CLIENT_SECRET` | Client Secret from 5a | **Secret (encrypt)** |
-| `ALLOWED_DOMAINS` | `invicti.works` | Text |
+| `GITHUB_CLIENT_ID` | `wrangler.jsonc`, under `vars` | Plain text — the dashboard cannot hold it (see below) |
+| `ALLOWED_DOMAINS` | `wrangler.jsonc`, under `vars` | Same |
+| `GITHUB_CLIENT_SECRET` | Dashboard, as **Secret (encrypt)** | Encrypted variables are never deleted by a deploy |
+
+> **A plain-text variable typed into the dashboard does not survive.**
+> `wrangler deploy` *deletes every plain var on the Worker that is not in the
+> configuration file*, and Workers Builds runs it on every push to `main`. So a
+> variable added in the dashboard is gone by the next build. This is
+> [documented behaviour](https://developers.cloudflare.com/workers/wrangler/configuration/#source-of-truth),
+> and it is exactly what made sign-in fail with `MISCONFIGURED_CLIENT` after the
+> credentials had apparently been set correctly.
+>
+> **Secrets are the exception** — Wrangler never deletes an encrypted variable —
+> which is why the client *secret* belongs in the dashboard and the client *ID*
+> does not.
+
+A GitHub OAuth **client ID is public by design**: it travels in the authorize
+URL and every visitor who signs in can read it. Only the secret is secret, so
+keeping the ID in version control is safe and keeps the configuration
+reproducible.
+
+Set the secret in Cloudflare → **Workers & Pages → websitebuild → Settings →
+Variables and Secrets**, then redeploy — variables only reach a running Worker
+on the next deploy.
 
 `ALLOWED_DOMAINS` is optional but you should set it. Without it the sign-in
 endpoint will mint tokens for a popup opened by any site, and the handler skips
@@ -240,21 +262,21 @@ two.
 The Client Secret is shown **once**. If you lose it, generate a new one on the
 same OAuth app and update the Worker variable — you do not need to start over.
 
-## 6. The enquiry form
+## 6. The contact form
 
-The "Find your solution" form on the home page posts to `/api/enquiry`, handled
-by our own Worker (`worker/enquiry.js`). It emails the enquiry to
+The "Find your solution" form on the home page posts to `/api/contact`, handled
+by our own Worker (`worker/contact.js`). It emails the message to
 `info@invicti.works` through [Resend](https://resend.com).
 
 **It is safe to ship before this is set up.** With no API key the endpoint
 answers `503`, and the page falls back to opening the visitor's email client
-with every answer already filled in — so an enquiry is never silently lost. What
+with every answer already filled in — so a message is never silently lost. What
 you gain by finishing this is that submitting works without leaving the page.
 
 ### 6a. Resend
 
 1. Create an account at <https://resend.com> — the free tier covers 3,000
-   emails a month, which is far more than an enquiry form will ever send.
+   emails a month, which is far more than a contact form will ever send.
 2. **Domains → Add Domain** → `invicti.works`.
 3. Resend gives you DNS records to add in Cloudflare. Add them exactly as shown.
 
@@ -269,15 +291,17 @@ you gain by finishing this is that submitting works without leaving the page.
 
 ### 6b. Give the Worker the key
 
-Cloudflare → **Workers & Pages → websitebuild → Settings → Variables and Secrets**:
+Only one thing goes in the dashboard, and it is a secret:
 
-| Name | Value | Type |
-| --- | --- | --- |
-| `RESEND_API_KEY` | The key from 6a | **Secret (encrypt)** |
-| `ENQUIRY_TO` | `info@invicti.works` | Text *(optional — this is the default)* |
-| `ENQUIRY_FROM` | `Invicti.Works website <website@invicti.works>` | Text *(optional — this is the default)* |
+Cloudflare → **Workers & Pages → websitebuild → Settings → Variables and
+Secrets** → add `RESEND_API_KEY` as a **Secret (encrypt)**.
 
-`ENQUIRY_FROM` must be on the domain you verified in 6a, or Resend rejects the
+`CONTACT_TO` and `CONTACT_FROM` are already set in `wrangler.jsonc` under
+`vars`, because a plain-text variable typed into the dashboard is deleted by the
+next deploy — see the warning in step 5b. Change them there, not in the
+dashboard.
+
+`CONTACT_FROM` must be on the domain you verified in 6a, or Resend rejects the
 send. Redeploy so the variables take effect, then submit the form once and check
 the inbox.
 
