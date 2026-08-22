@@ -9,6 +9,7 @@
  * built in, and adding a runner to a site with one test file is not worth the
  * dependency.
  */
+import { readFileSync } from 'node:fs';
 import { handleContact } from './contact.js';
 
 const post = (body, headers = {}) =>
@@ -107,6 +108,26 @@ for (const path of ['/oauth/authorize', '/oauth/authorize/']) {
   const ok = res.status === 302 && location.startsWith('https://github.com/login/oauth/authorize');
   console.log(`${ok ? 'PASS' : 'FAIL'}  auth ${path.padEnd(19)} got ${res.status} ${location.slice(0, 44)}`);
   if (!ok) failures++;
+}
+
+// Configuration the Worker reads must actually be in wrangler.jsonc. A plain
+// var set only in the Cloudflare dashboard is deleted by the next deploy --
+// that is what made CMS sign-in fail with MISCONFIGURED_CLIENT -- so "it works
+// because someone typed it into the dashboard" must not be a thing that passes.
+// Secrets are the exception and are deliberately absent here.
+const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+
+for (const key of ['GITHUB_CLIENT_ID', 'ALLOWED_DOMAINS', 'CONTACT_TO', 'CONTACT_FROM']) {
+  const present = new RegExp(`"${key}"\\s*:`).test(wrangler);
+  console.log(`${present ? 'PASS' : 'FAIL'}  wrangler.jsonc declares ${key}`);
+  if (!present) failures++;
+}
+
+// The reverse: a secret in the config file would publish it in a public repo.
+for (const key of ['GITHUB_CLIENT_SECRET', 'RESEND_API_KEY']) {
+  const leaked = new RegExp(`"${key}"\\s*:`).test(wrangler);
+  console.log(`${leaked ? 'FAIL' : 'PASS'}  wrangler.jsonc does NOT contain ${key}`);
+  if (leaked) failures++;
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
