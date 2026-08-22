@@ -1,0 +1,133 @@
+---
+/**
+ * Decorative hero artwork.
+ *
+ * Generated rather than photographed, deliberately: it is a few KB of vector
+ * instead of a few hundred KB of JPEG, it scales to any viewport without a
+ * srcset, it carries the brand colours exactly, and there is no stock licence
+ * to track. The home page was cut to 49 KB in #8 and this keeps it there.
+ *
+ * `aria-hidden` because it says nothing a screen reader needs: the headline
+ * beside it carries the meaning. All motion is disabled under
+ * `prefers-reduced-motion`.
+ */
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+
+// A fixed constellation rather than a random one, so the composition is the
+// same on every build and can be judged once.
+const nodes = [
+  { x: 120, y: 90, r: 5 },
+  { x: 245, y: 42, r: 3 },
+  { x: 330, y: 150, r: 6 },
+  { x: 195, y: 205, r: 4 },
+  { x: 60, y: 240, r: 3 },
+  { x: 415, y: 88, r: 4 },
+  { x: 470, y: 225, r: 5 },
+  { x: 300, y: 285, r: 3 },
+];
+
+const edges = [
+  [0, 1],
+  [1, 2],
+  [2, 3],
+  [3, 4],
+  [1, 5],
+  [5, 6],
+  [2, 6],
+  [3, 7],
+  [6, 7],
+  [0, 3],
+];
+---
+
+<svg
+  class:list={['hero-art', className]}
+  viewBox="0 0 540 330"
+  fill="none"
+  aria-hidden="true"
+  focusable="false"
+  preserveAspectRatio="xMidYMid meet"
+>
+  <defs>
+    <linearGradient id="ha-edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f87000" stop-opacity="0.9"></stop>
+      <stop offset="100%" stop-color="#7fb6ff" stop-opacity="0.5"></stop>
+    </linearGradient>
+
+    <radialGradient id="ha-glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f87000" stop-opacity="0.55"></stop>
+      <stop offset="100%" stop-color="#f87000" stop-opacity="0"></stop>
+    </radialGradient>
+
+    <pattern id="ha-grid" width="36" height="36" patternUnits="userSpaceOnUse">
+      <path d="M36 0H0V36" stroke="#7fb6ff" stroke-opacity="0.16" stroke-width="1"></path>
+    </pattern>
+  </defs>
+
+  <rect width="540" height="330" fill="url(#ha-grid)"></rect>
+  <circle cx="330" cy="150" r="170" fill="url(#ha-glow)"></circle>
+
+  <g stroke="url(#ha-edge)" stroke-width="1.25" stroke-linecap="round">
+    {
+      edges.map(([a, b]) => (
+        <line x1={nodes[a].x} y1={nodes[a].y} x2={nodes[b].x} y2={nodes[b].y} />
+      ))
+    }
+  </g>
+
+  <g>
+    {
+      nodes.map((n, i) => (
+        <circle
+          class="hero-art__node"
+          cx={n.x}
+          cy={n.y}
+          r={n.r}
+          fill={i % 3 === 0 ? '#f87000' : '#9ecbff'}
+          style={`--i:${i}`}
+        />
+      ))
+    }
+  </g>
+</svg>
+
+<style>
+  .hero-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 34rem;
+    overflow: visible;
+  }
+
+  .hero-art__node {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: hero-art-pulse 4.5s ease-in-out infinite;
+    /* Stagger off the index so the constellation breathes rather than blinks. */
+    animation-delay: calc(var(--i) * 0.45s);
+  }
+
+  @keyframes hero-art-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.35);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-art__node {
+      animation: none;
+      opacity: 0.9;
+    }
+  }
+</style>

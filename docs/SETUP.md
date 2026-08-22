@@ -218,7 +218,78 @@ sign in with GitHub.
 > points at `https://invicti.works`, so the popup only resolves once the custom
 > domain is attached.
 
-## 6. Lock the CMS behind Cloudflare Access
+## 6. The enquiry form
+
+The "Find your solution" form on the home page posts to `/api/enquiry`, handled
+by our own Worker (`worker/enquiry.js`). It emails the enquiry to
+`info@invicti.works` through [Resend](https://resend.com).
+
+**It is safe to ship before this is set up.** With no API key the endpoint
+answers `503`, and the page falls back to opening the visitor's email client
+with every answer already filled in — so an enquiry is never silently lost. What
+you gain by finishing this is that submitting works without leaving the page.
+
+### 6a. Resend
+
+1. Create an account at <https://resend.com> — the free tier covers 3,000
+   emails a month, which is far more than an enquiry form will ever send.
+2. **Domains → Add Domain** → `invicti.works`.
+3. Resend gives you DNS records to add in Cloudflare. Add them exactly as shown.
+
+   > These are **additional** records for *sending*. They do not touch the `MX`
+   > records that deliver your incoming Microsoft 365 mail. Resend will ask for
+   > a DKIM `TXT` record and usually an SPF `TXT` on a subdomain such as
+   > `send.invicti.works` — adding a second SPF record on the apex would break
+   > your existing one, so keep it on the subdomain Resend names.
+
+4. Wait for the domain to verify, then **API Keys → Create API Key** with
+   **Sending access** only. Copy it — it is shown once.
+
+### 6b. Give the Worker the key
+
+Cloudflare → **Workers & Pages → websitebuild → Settings → Variables and Secrets**:
+
+| Name | Value | Type |
+| --- | --- | --- |
+| `RESEND_API_KEY` | The key from 6a | **Secret (encrypt)** |
+| `ENQUIRY_TO` | `info@invicti.works` | Text *(optional — this is the default)* |
+| `ENQUIRY_FROM` | `Invicti.Works website <website@invicti.works>` | Text *(optional — this is the default)* |
+
+`ENQUIRY_FROM` must be on the domain you verified in 6a, or Resend rejects the
+send. Redeploy so the variables take effect, then submit the form once and check
+the inbox.
+
+Replies work as you would expect: the email's reply-to is set to the person who
+filled the form in, so hitting reply writes to them, not to us.
+
+---
+
+## 7. The marketplace
+
+`/marketplace` **does not exist yet, on purpose.** The page is built only when
+the `apps` collection has at least one published entry — no page, no navigation
+link, no sitemap entry until then. Adding your first app in the CMS publishes
+the storefront on the next deploy; deleting the last one takes it away again.
+
+Selling an app takes one thing from Stripe:
+
+1. Stripe dashboard → **Payment links → New** → create a link for the app.
+2. Copy the link and paste it into the app's **Stripe payment link** field in
+   the CMS.
+
+That is the whole integration. A Payment Link is just a URL, so **no Stripe key
+is ever stored on this site** and there is nothing to rotate or leak. Leave the
+field blank and the card shows "Notify me" instead of "Buy", which is how you
+list something before it is ready.
+
+> This handles taking the money. It does not handle **delivering** the app —
+> download links, licence keys or App Store promo codes. Stripe can send a
+> receipt with a link in it for simple cases; anything more needs a decision
+> about fulfilment, and is worth having before the first sale rather than after.
+
+---
+
+## 8. Lock the CMS behind Cloudflare Access
 
 The editor lives at a public URL, so put a login in front of it. The Zero Trust
 free plan covers up to 50 users.
@@ -249,7 +320,7 @@ regardless of Access. Grant both deliberately.
 
 ---
 
-## 7. Add Josh
+## 9. Add Josh
 
 **On GitHub:**
 
@@ -267,13 +338,13 @@ regardless of Access. Grant both deliberately.
    effectively be an **Administrator** with access to DNS. Only invite them here
    if you are comfortable with that; they do **not** need a Cloudflare account
    just to edit content — for that, adding their email to the Access policy in
-   step 6 is enough.
+   step 8 is enough.
 
-**In the CMS:** add their email to the Access policy from step 6.
+**In the CMS:** add their email to the Access policy from step 8.
 
 ---
 
-## 8. Protect the `main` branch
+## 10. Protect the `main` branch
 
 So neither of you can accidentally publish straight to the live site.
 
@@ -295,7 +366,7 @@ Rulesets are free on this repository because it is public.
 
 ---
 
-## 9. Recommended extras
+## 11. Recommended extras
 
 **Analytics (free, no cookie banner).** Worker → **Settings → Web Analytics →
 Enable**. Cloudflare Web Analytics does not use cookies or track people across

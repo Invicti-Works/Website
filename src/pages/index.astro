@@ -1,146 +1,94 @@
 ---
+import { render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import ProductCard from '../components/ProductCard.astro';
+import HeroArt from '../components/HeroArt.astro';
+import SolutionFinder from '../components/SolutionFinder.astro';
 import site from '../data/site.json';
-import { getProducts, getNews, formatDate } from '../lib/content';
+import { getTeam } from '../lib/content';
 
-const products = (await getProducts()).slice(0, 3);
-const news = (await getNews()).slice(0, 2);
-
-// Edit these four in place, or move them into the CMS if they start changing
-// often. They are deliberately capability-level, not a service menu.
-const capabilities = [
-  {
-    title: 'Product strategy',
-    body: 'Turning an idea into something buildable: what it has to do, who it is for, and what to leave out of version one.',
-  },
-  {
-    title: 'Mobile applications',
-    body: 'Apps for iOS and Android, from the first build through App Store and Google Play review to the release itself.',
-  },
-  {
-    title: 'Platforms and APIs',
-    body: 'The web application and services a mobile product leans on — accounts, data, integrations and the admin side nobody sees.',
-  },
-  {
-    title: 'Launch and beyond',
-    body: 'Releases, monitoring, updates, and the changes that only become obvious once real people are using the thing.',
-  },
-];
+const team = await getTeam();
+const bios = await Promise.all(
+  team.map(async (member) => ({ member, Content: (await render(member)).Content })),
+);
 ---
 
 <BaseLayout title="Home">
   <section class="band hero">
-    <div class="container hero__inner">
-      <p class="eyebrow">SaaS and mobile applications</p>
-      <h1>{site.tagline}</h1>
-      <p class="hero__lede">{site.description}</p>
-      <div class="cta-row">
-        <a class="button" href="/contact">Talk to us</a>
-        <a class="button button--secondary" href="/products">See our products</a>
+    <div class="container hero__grid">
+      <div class="hero__inner">
+        <p class="eyebrow">Mobile and web applications</p>
+        <h1>{site.tagline}</h1>
+        <p class="hero__lede">{site.description}</p>
+        <div class="cta-row">
+          <a class="button" href="#find-your-solution">Find your solution</a>
+          <a class="button button--secondary" href="/contact">Talk to us</a>
+        </div>
       </div>
+      <HeroArt class="hero__art" />
     </div>
   </section>
 
   {
-    products.length > 0 && (
-      <section class="section" aria-labelledby="products-heading">
+    bios.length > 0 && (
+      <section class="section" aria-labelledby="founders-heading">
         <div class="container">
           <div class="section-head">
-            <h2 id="products-heading">Our products</h2>
-            <p class="muted">
-              What we build, and how we go about it. Each one has its own page with the
-              detail behind it.
-            </p>
+            <h2 id="founders-heading">Who we are</h2>
           </div>
-          <ul class="grid" role="list">
-            {products.map((product) => (
-              <li>
-                <ProductCard product={product} />
-              </li>
+          <div class="team">
+            {bios.map(({ member, Content }) => (
+              <article class="team__member">
+                {member.data.image && (
+                  /* alt="" on purpose: the name sits right beside it, so
+                     describing the photo would just repeat that name. */
+                  <img
+                    class="team__photo"
+                    src={member.data.image}
+                    alt=""
+                    width="120"
+                    height="120"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <h3>{member.data.name}</h3>
+                <p class="team__role">{member.data.role}</p>
+                <p class="muted team__summary">{member.data.summary}</p>
+                <div class="prose team__bio">
+                  <Content />
+                </div>
+              </article>
             ))}
-          </ul>
-          <p class="section__more">
-            <a href="/products">All products</a>
-          </p>
+          </div>
         </div>
       </section>
     )
   }
 
-  <section class="section section--subtle" aria-labelledby="capabilities-heading">
-    <div class="container">
-      <div class="section-head">
-        <h2 id="capabilities-heading">What we do</h2>
-        <p class="muted">
-            Four things, and they tend to come as a set. Most of our work runs from the
-            first sketch through to the versions that come after launch.
-          </p>
-      </div>
-      <ul class="grid" role="list">
-        {
-          capabilities.map((item) => (
-            <li>
-              <div class="card">
-                <h3>{item.title}</h3>
-                <p class="muted">{item.body}</p>
-              </div>
-            </li>
-          ))
-        }
-      </ul>
-    </div>
-  </section>
-
-  {
-    news.length > 0 && (
-      <section class="section" aria-labelledby="news-heading">
-        <div class="container">
-          <div class="section-head">
-            <h2 id="news-heading">Latest news</h2>
-          </div>
-          <ul class="grid" role="list">
-            {news.map((post) => (
-              <li>
-                <article class="card">
-                  <p class="eyebrow">
-                    <time datetime={post.data.date.toISOString()}>
-                      {formatDate(post.data.date)}
-                    </time>
-                  </p>
-                  <h3>
-                    <a href={`/news/${post.id}`}>{post.data.title}</a>
-                  </h3>
-                  <p class="muted">{post.data.summary}</p>
-                </article>
-              </li>
-            ))}
-          </ul>
-          <p class="section__more"><a href="/news">All news</a></p>
-        </div>
-      </section>
-    )
-  }
-
-  <section class="band section" aria-labelledby="cta-heading">
-    <div class="container closing">
-      <h2 id="cta-heading">Tell us what you are building</h2>
-      <p>
-        A sentence or two about the product you have in mind is enough to start. We will
-        come back with an honest read on scope and approach — including when the answer
-        is that you do not need us yet.
-      </p>
-      <div class="cta-row">
-        <a class="button" href="/contact">Start a conversation</a>
-        <a class="button button--secondary" href={`mailto:${site.email}`}>{site.email}</a>
-      </div>
-    </div>
-  </section>
+  <SolutionFinder />
 </BaseLayout>
 
 <style>
   .hero {
     padding-block: var(--space-2xl);
+  }
+
+  .hero__grid {
+    display: grid;
+    gap: var(--space-xl);
+    align-items: center;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+
+  /* One column below the point where the artwork stops earning its space. */
+  @media (max-width: 56rem) {
+    .hero__grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero__art {
+      display: none;
+    }
   }
 
   .hero__inner {
@@ -157,17 +105,45 @@ const capabilities = [
     color: #cfe0f7;
   }
 
-  .grid {
-    list-style: none;
-    padding: 0;
+  .team {
+    display: grid;
+    gap: var(--space-xl);
+    grid-template-columns: repeat(auto-fit, minmax(min(22rem, 100%), 1fr));
   }
 
-  .section__more {
-    margin-block-start: var(--space-lg);
+  .team__member {
+    padding: var(--space-lg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-bg-subtle);
+  }
+
+  .team__photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-block-end: var(--space-md);
+    border: 3px solid var(--color-bg);
+    box-shadow: 0 0 0 1px var(--color-border);
+  }
+
+  .team__member h3 {
+    font-size: var(--step-2);
+  }
+
+  .team__role {
     font-weight: 600;
+    color: var(--color-accent-warm);
+    margin-block-start: var(--space-2xs);
   }
 
-  .closing {
-    max-width: var(--measure);
+  .team__summary {
+    margin-block-start: var(--space-sm);
   }
+
+  .team__bio {
+    margin-block-start: var(--space-md);
+  }
+
 </style>

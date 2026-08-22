@@ -28,152 +28,7 @@ site_url: https://invicti.works
 
 collections:
   # ---------------------------------------------------------------
-  # Products -- adding one here creates its landing page at
-  # /products/<slug> and lists it on the home page. No code needed.
-  # ---------------------------------------------------------------
-  - name: products
-    label: Products
-    label_singular: Product
-    folder: src/content/products
-    create: true
-    slug: '{{slug}}'
-    extension: md
-    format: frontmatter
-    identifier_field: title
-    summary: '{{title}} — {{status}}'
-    sortable_fields: ['order', 'title']
-    fields:
-      - { name: title, label: Product name, widget: string }
-      - name: tagline
-        label: Tagline
-        widget: string
-        hint: One short positioning line. Shown large under the name.
-      - name: summary
-        label: Summary
-        widget: text
-        hint: One or two sentences. Used on cards, in Google results and in social previews.
-      - name: category
-        label: Category
-        widget: select
-        options:
-          - { label: SaaS, value: saas }
-          - { label: Mobile app, value: mobile }
-          - { label: Platform, value: platform }
-      - name: status
-        label: Status
-        widget: select
-        default: in-development
-        options:
-          - { label: Live, value: live }
-          - { label: In beta, value: beta }
-          - { label: In development, value: in-development }
-          - { label: Concept, value: concept }
-      - name: platforms
-        label: Platforms
-        widget: select
-        multiple: true
-        required: false
-        options:
-          - { label: Web, value: web }
-          - { label: iOS, value: ios }
-          - { label: Android, value: android }
-          - { label: API, value: api }
-          - { label: Desktop, value: desktop }
-      - name: order
-        label: Sort order
-        widget: number
-        value_type: int
-        default: 100
-        hint: Lower numbers appear first.
-      - name: image
-        label: Hero image
-        widget: object
-        required: false
-        collapsed: true
-        fields:
-          - { name: src, label: File, widget: image }
-          - name: alt
-            label: Alt text
-            widget: string
-            hint: >-
-              Required. Describe the image for someone using a screen reader.
-              If it is purely decorative, remove the image field instead.
-      - name: screenshots
-        label: Screenshots
-        widget: list
-        required: false
-        collapsed: true
-        label_singular: Screenshot
-        fields:
-          - { name: src, label: File, widget: image }
-          - { name: alt, label: Alt text, widget: string }
-      - name: features
-        label: Features
-        widget: list
-        required: false
-        label_singular: Feature
-        summary: '{{fields.title}}'
-        fields:
-          - { name: title, label: Feature, widget: string }
-          - { name: description, label: Description, widget: string, required: false }
-      - name: pricing
-        label: Pricing tiers
-        widget: list
-        required: false
-        collapsed: true
-        label_singular: Tier
-        summary: '{{fields.name}} — {{fields.price}}'
-        hint: Leave empty for products that are not priced yet; the section is hidden.
-        fields:
-          - { name: name, label: Tier name, widget: string }
-          - { name: price, label: Price, widget: string, hint: 'e.g. $49 or Custom' }
-          - { name: period, label: Period, widget: string, required: false, hint: 'e.g. month, seat/month' }
-          - { name: description, label: Description, widget: string, required: false }
-          - name: includes
-            label: Includes
-            widget: list
-            required: false
-            field: { name: item, label: Item, widget: string }
-          - { name: highlighted, label: Highlight this tier, widget: boolean, default: false }
-      - name: faq
-        label: Questions
-        widget: list
-        required: false
-        collapsed: true
-        label_singular: Question
-        summary: '{{fields.question}}'
-        fields:
-          - { name: question, label: Question, widget: string }
-          - { name: answer, label: Answer, widget: text }
-      - name: links
-        label: External links
-        widget: object
-        required: false
-        collapsed: true
-        fields:
-          - { name: website, label: Product website, widget: string, required: false }
-          - { name: demo, label: Demo URL, widget: string, required: false }
-          - { name: appStore, label: App Store URL, widget: string, required: false }
-          - { name: playStore, label: Google Play URL, widget: string, required: false }
-      - name: ctaLabel
-        label: Call-to-action label
-        widget: string
-        required: false
-        hint: Overrides the default "Talk to us about <product>" button.
-      - { name: draft, label: Draft, widget: boolean, default: false }
-      - name: seo
-        label: SEO overrides
-        widget: object
-        collapsed: true
-        required: false
-        fields:
-          - { name: title, label: Title override, widget: string, required: false }
-          - { name: description, label: Description override, widget: text, required: false }
-          - { name: noindex, label: Hide from search engines, widget: boolean, default: false }
-      - { name: body, label: Page content, widget: markdown }
-
-  # ---------------------------------------------------------------
-  # Team -- shown on /about
+  # Team -- shown at the foot of the home page
   # ---------------------------------------------------------------
   - name: team
     label: Team
@@ -215,81 +70,75 @@ collections:
       - { name: body, label: Bio, widget: markdown }
 
   # ---------------------------------------------------------------
-  # Pages
+  # Apps -- the marketplace. The /marketplace page does not exist at
+  # all until this collection has an entry; adding the first one
+  # publishes the storefront. Leave "Stripe payment link" empty to
+  # list an app as coming soon.
   # ---------------------------------------------------------------
-  - name: pages
-    label: Pages
-    label_singular: Page
-    folder: src/content/pages
+  - name: apps
+    label: Marketplace apps
+    label_singular: App
+    folder: src/content/apps
     create: true
     slug: '{{slug}}'
     extension: md
     format: frontmatter
     identifier_field: title
-    summary: '{{title}}'
+    summary: '{{title}} — {{status}}'
+    sortable_fields: ['order', 'title']
     fields:
-      - { name: title, label: Title, widget: string }
+      - { name: title, label: App name, widget: string }
+      - name: tagline
+        label: Tagline
+        widget: string
+        hint: One short positioning line, shown under the name.
       - name: summary
         label: Summary
         widget: text
-        hint: Shown under the heading and used as the search-engine description.
+        hint: One or two sentences for the card.
+      - name: price
+        label: Price
+        widget: string
+        required: false
+        hint: 'Shown as written, e.g. $49 or From $12/month. Does not set the charge -- Stripe does that.'
+      - name: status
+        label: Status
+        widget: select
+        default: coming-soon
+        options:
+          - { label: Available, value: available }
+          - { label: Coming soon, value: coming-soon }
+      - name: platforms
+        label: Platforms
+        widget: select
+        multiple: true
+        required: false
+        options:
+          - { label: Web, value: web }
+          - { label: iOS, value: ios }
+          - { label: Android, value: android }
+          - { label: API, value: api }
+          - { label: Desktop, value: desktop }
+      - name: stripeUrl
+        label: Stripe payment link
+        widget: string
+        required: false
+        pattern: ['^https://', 'Must be the full https:// link from Stripe']
+        hint: >-
+          Create a Payment Link in the Stripe dashboard and paste it here. Leave
+          empty and the card offers "Notify me" instead of "Buy".
+      - name: features
+        label: Features
+        widget: list
+        required: false
+        field: { name: item, label: Feature, widget: string }
+      - name: order
+        label: Sort order
+        widget: number
+        value_type: int
+        default: 100
+        hint: Lower numbers appear first.
       - { name: draft, label: Draft, widget: boolean, default: false }
-      - name: seo
-        label: SEO overrides
-        widget: object
-        collapsed: true
-        required: false
-        fields:
-          - { name: title, label: Title override, widget: string, required: false }
-          - { name: description, label: Description override, widget: text, required: false }
-          - { name: noindex, label: Hide from search engines, widget: boolean, default: false }
-      - { name: body, label: Content, widget: markdown }
-
-  # ---------------------------------------------------------------
-  # News
-  # ---------------------------------------------------------------
-  - name: news
-    label: News
-    label_singular: Post
-    folder: src/content/news
-    create: true
-    slug: '{{year}}-{{month}}-{{day}}-{{slug}}'
-    extension: md
-    format: frontmatter
-    identifier_field: title
-    summary: '{{date}} — {{title}}'
-    sortable_fields: ['date', 'title']
-    view_filters:
-      - { label: Drafts, field: draft, pattern: true }
-    fields:
-      - { name: title, label: Title, widget: string }
-      - name: date
-        label: Publish date
-        widget: datetime
-        date_format: YYYY-MM-DD
-        time_format: false
-        picker_utc: true
-      - { name: summary, label: Summary, widget: text }
-      - { name: author, label: Author, widget: string, required: false }
-      - name: image
-        label: Image
-        widget: object
-        required: false
-        collapsed: true
-        fields:
-          - { name: src, label: File, widget: image }
-          - { name: alt, label: Alt text, widget: string }
-      - { name: draft, label: Draft, widget: boolean, default: false }
-      - name: seo
-        label: SEO overrides
-        widget: object
-        collapsed: true
-        required: false
-        fields:
-          - { name: title, label: Title override, widget: string, required: false }
-          - { name: description, label: Description override, widget: text, required: false }
-          - { name: noindex, label: Hide from search engines, widget: boolean, default: false }
-      - { name: body, label: Content, widget: markdown }
 
   # ---------------------------------------------------------------
   # Site settings
@@ -337,6 +186,9 @@ collections:
             collapsed: true
             fields:
               - { name: linkedin, label: LinkedIn URL, widget: string, required: false }
+              - { name: facebook, label: Facebook URL, widget: string, required: false }
+              - { name: instagram, label: Instagram URL, widget: string, required: false }
+              - { name: pinterest, label: Pinterest URL, widget: string, required: false }
               - { name: github, label: GitHub URL, widget: string, required: false }
               - { name: x, label: X URL, widget: string, required: false }
               - { name: youtube, label: YouTube URL, widget: string, required: false }

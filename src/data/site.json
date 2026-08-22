@@ -2,7 +2,7 @@
   "name": "Invicti.Works",
   "shortName": "Invicti.Works",
   "tagline": "No app left behind.",
-  "description": "Invicti.Works designs, builds and ships mobile and web applications for organizations that need software their people will actually use. We take a product from first concept through store release and the work that keeps it running afterwards.",
+  "description": "Invicti.Works engineers mobile and web applications for organizations that need software their people will actually use. We take a product from the first idea through release and the work that keeps it running.",
   "url": "https://invicti.works",
   "locale": "en_US",
   "email": "info@invicti.works",
@@ -16,6 +16,9 @@
   },
   "social": {
     "linkedin": "",
+    "facebook": "https://www.facebook.com/profile.php?id=61593296175802",
+    "instagram": "https://www.instagram.com/invicti.works",
+    "pinterest": "https://www.pinterest.com/invictiworks/",
     "github": "",
     "x": "",
     "youtube": ""
