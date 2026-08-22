@@ -95,12 +95,40 @@ records. Worse, because the trigger update failed, **the whole deploy failed**
 — so the site content stopped updating too. The `routes` block has been
 commented out of `wrangler.jsonc` to get deploys working again.
 
-To finish the job:
+### What is actually on the domain
+
+Queried against public DNS on 22 Aug 2026:
+
+| Name | Type | Value | Action |
+| --- | --- | --- | --- |
+| `invicti.works` | `A` | `172.67.216.24`, `104.21.53.178` | **Delete** |
+| `invicti.works` | `AAAA` | `2606:4700:3031::6815:35b2`, `2606:4700:3034::ac43:d818` | **Delete** |
+| `www.invicti.works` | `A` | same two addresses | **Delete** |
+| `www.invicti.works` | `AAAA` | same two addresses | **Delete** |
+| `invicti.works` | `MX` | `mx1/mx2/mx3-usg2.ppe-hosted.com` | **KEEP** |
+| `invicti.works` | `TXT` | `NETORGFT21013219.onmicrosoft.com` | **KEEP** |
+| `invicti.works` | `TXT` | `v=spf1 include:_spf-usg2.ppe-hosted.com include:secureserver.net ~all` | **KEEP** |
+
+> **Do not delete the `MX` or `TXT` records.** They route and authenticate mail
+> for the domain — Microsoft 365 behind Proofpoint filtering. Removing them
+> breaks email to `info@invicti.works`, which is the contact address published
+> on this site. They do not block the custom domain; only `A`, `AAAA` and
+> `CNAME` on the apex and `www` do.
+
+Two things the public view cannot tell you, because those `A`/`AAAA` answers are
+Cloudflare edge addresses — the records are proxied, so the real target is
+hidden:
+
+- **What the records actually point at.** The dashboard shows the true value.
+  Expect one or two rows per name, not the four addresses above.
+- **Whether anything is being served there today.** If a site or landing page is
+  currently live at `invicti.works`, deleting these replaces it with this one.
+  Check before deleting.
+
+### Finishing the job
 
 1. Cloudflare → **DNS → Records**.
-2. Delete the existing records for `invicti.works` and `www` — typically an
-   `A`, `AAAA` or `CNAME` left by a previous host or a parking page. Do **not**
-   delete `MX` or `TXT` records: those carry email and domain verification.
+2. Delete the `A` and `AAAA` records on `invicti.works` and `www` per the table.
 3. Uncomment the `routes` block in `wrangler.jsonc` (it is left in the file with
    the exact lines to restore) and merge.
 4. The next deploy creates the custom domains, issues the certificates and
