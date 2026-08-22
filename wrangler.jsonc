@@ -79,6 +79,10 @@
   // A GitHub OAuth client ID is public by design: it is sent in the authorize
   // URL and visible to anyone who signs in. Only the secret is a secret.
   "vars": {
+    // OAuth App client ID. Public by design -- GitHub puts it in the authorize
+    // URL, so every visitor who signs in already sees it. The matching secret
+    // is GITHUB_CLIENT_SECRET and lives in the dashboard, encrypted.
+    "GITHUB_CLIENT_ID": "Ov23li25oKgxDYjG5Ua6",
     "ALLOWED_DOMAINS": "invicti.works",
     "CONTACT_TO": "info@invicti.works",
     "CONTACT_FROM": "Invicti.Works website <website@invicti.works>"
