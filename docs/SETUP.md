@@ -211,12 +211,34 @@ Cloudflare → **Workers & Pages → websitebuild → Settings → Variables and
 endpoint will mint tokens for a popup opened by any site, and the handler skips
 its origin check on the way back.
 
-Redeploy so the variables take effect. `https://invicti.works/admin/` will then
-sign in with GitHub.
+Redeploy so the variables take effect — variables only reach a running Worker on
+the next deploy, so nothing changes until you do. Then open
+<https://invicti.works/admin/> and sign in with GitHub.
 
-> Sign-in needs step 4 finished first. `base_url` in `public/admin/config.yml`
-> points at `https://invicti.works`, so the popup only resolves once the custom
-> domain is attached.
+Step 4 is done, so the prerequisite for this is already met: `base_url` in
+`public/admin/config.yml` points at `https://invicti.works`, and the sign-in
+popup only resolves once that domain is attached.
+
+### 5c. What you should see
+
+Clicking **Sign in with GitHub** opens a small popup asking you to authorise
+*Invicti.Works CMS*. Approve it, the popup closes itself, and the CMS loads with
+**Team**, **Marketplace apps** and **Site settings** down the left. Saving there
+commits straight to `main`, and Cloudflare deploys the change within a minute or
+two.
+
+### If it does not work
+
+| What you see | What it means |
+| --- | --- |
+| `redirect_uri_mismatch` from GitHub | The callback URL on the OAuth app is not exactly `https://invicti.works/oauth/redirect`. No trailing slash, `https` not `http`. |
+| "OAuth is not configured" or a 500 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` are missing, misspelled, or the Worker has not been redeployed since you added them. |
+| Popup opens, then nothing happens | `ALLOWED_DOMAINS` does not contain `invicti.works`, so the handler refuses to post the token back to the page. |
+| "Not Found" at `/admin/` | The deploy has not finished. Check the build in the Cloudflare dashboard. |
+| Signs in, but saving fails | The account you signed in with does not have write access to `Invicti-Works/Website`. |
+
+The Client Secret is shown **once**. If you lose it, generate a new one on the
+same OAuth app and update the Worker variable — you do not need to start over.
 
 ## 6. The enquiry form
 
