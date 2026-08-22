@@ -1,7 +1,7 @@
 ---
 name: Josh Forman
 role: Co-founder
-summary: AI, data and geospatial products for defense and intelligence.
+summary: End to end solutions that scale to your mission needs.
 image: /team/josh-forman.jpg
 order: 20
 links:
