@@ -1,21 +1,9 @@
 ---
 import Logo from './Logo.astro';
-import { getApps } from '../lib/content';
 
-// The marketplace route is only built when the `apps` collection has something
-// in it (see src/pages/marketplace/[...path].astro), so the link has to be
-// conditional on the same thing -- otherwise the nav would 404 until the first
-// app is added.
-const hasApps = (await getApps()).length > 0;
-
-const links = [
-  ...(hasApps ? [{ href: '/marketplace', label: 'Marketplace' }] : []),
-  { href: '/contact', label: 'Contact' },
-];
-
-// Normalise so `/contact` and `/contact/` both mark the same link current.
-const current = Astro.url.pathname.replace(/\/+$/, '') || '/';
-const isCurrent = (href: string) => current === href || current.startsWith(`${href}/`);
+// The header is the logo alone, by choice. Every destination is reachable from
+// the page itself -- the hero has both calls to action -- and the footer
+// carries the full list. Re-add a nav here if the site outgrows that.
 ---
 
 <header class="site-header">
@@ -24,22 +12,6 @@ const isCurrent = (href: string) => current === href || current.startsWith(`${hr
       <Logo width={190} />
     </a>
 
-    <nav aria-label="Main">
-      <ul class="site-header__nav">
-        {
-          links.map((link) => (
-            <li>
-              <a href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>
-                {link.label}
-              </a>
-            </li>
-          ))
-        }
-        <li>
-          <a class="button site-header__cta" href="/#find-your-solution">Find your solution</a>
-        </li>
-      </ul>
-    </nav>
   </div>
 </header>
 
@@ -63,42 +35,5 @@ const isCurrent = (href: string) => current === href || current.startsWith(`${hr
     align-items: center;
     min-height: 44px;
     text-decoration: none;
-  }
-
-  .site-header__nav {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-xs) var(--space-md);
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  .site-header__nav a:not(.button) {
-    display: inline-flex;
-    align-items: center;
-    min-height: 44px;
-    color: var(--color-text);
-    text-decoration: none;
-    font-weight: 500;
-    border-bottom: 2px solid transparent;
-  }
-
-  .site-header__nav a:not(.button):hover {
-    color: var(--color-accent);
-    border-bottom-color: currentColor;
-  }
-
-  /* Driven by `aria-current` so the visual state and the accessible state
-     can never drift apart. */
-  .site-header__nav a[aria-current='page'] {
-    color: var(--color-accent);
-    border-bottom-color: currentColor;
-    font-weight: 700;
-  }
-
-  .site-header__cta {
-    padding-block: var(--space-xs);
   }
 </style>

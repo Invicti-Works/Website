@@ -1,7 +1,6 @@
 ---
 import { render } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import HeroArt from '../components/HeroArt.astro';
 import SolutionFinder from '../components/SolutionFinder.astro';
 import site from '../data/site.json';
 import { getTeam } from '../lib/content';
@@ -14,17 +13,14 @@ const bios = await Promise.all(
 
 <BaseLayout title="Home">
   <section class="band hero">
-    <div class="container hero__grid">
-      <div class="hero__inner">
-        <p class="eyebrow">Mobile and web applications</p>
-        <h1>{site.tagline}</h1>
-        <p class="hero__lede">{site.description}</p>
-        <div class="cta-row">
-          <a class="button" href="#find-your-solution">Find your solution</a>
-          <a class="button button--secondary" href="/contact">Talk to us</a>
-        </div>
+    <div class="container hero__inner">
+      <p class="eyebrow">Mobile and web applications</p>
+      <h1>{site.tagline}</h1>
+      <p class="hero__lede">{site.description}</p>
+      <div class="cta-row">
+        <a class="button" href="#find-your-solution">Find your solution</a>
+        <a class="button button--secondary" href="/contact">Contact Us</a>
       </div>
-      <HeroArt class="hero__art" />
     </div>
   </section>
 
@@ -71,24 +67,6 @@ const bios = await Promise.all(
 <style>
   .hero {
     padding-block: var(--space-2xl);
-  }
-
-  .hero__grid {
-    display: grid;
-    gap: var(--space-xl);
-    align-items: center;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  }
-
-  /* One column below the point where the artwork stops earning its space. */
-  @media (max-width: 56rem) {
-    .hero__grid {
-      grid-template-columns: 1fr;
-    }
-
-    .hero__art {
-      display: none;
-    }
   }
 
   .hero__inner {
