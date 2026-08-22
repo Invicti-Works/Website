@@ -1,0 +1,58 @@
+---
+import PageLayout from '../../layouts/PageLayout.astro';
+import { getNews, formatDate } from '../../lib/content';
+
+const posts = await getNews();
+---
+
+<PageLayout title="News" summary="Updates, announcements and stories.">
+  {
+    posts.length === 0 ? (
+      <p class="muted">There are no posts yet.</p>
+    ) : (
+      <ul class="post-list" role="list">
+        {posts.map((post) => (
+          <li class="post-list__item">
+            <article>
+              <p class="eyebrow">
+                <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+              </p>
+              <h2>
+                <a href={`/news/${post.id}`}>{post.data.title}</a>
+              </h2>
+              <p class="muted">{post.data.summary}</p>
+            </article>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</PageLayout>
+
+<style>
+  .post-list {
+    list-style: none;
+    padding: 0;
+    max-width: var(--measure);
+    display: grid;
+    gap: var(--space-lg);
+  }
+
+  .post-list__item + .post-list__item {
+    border-top: 1px solid var(--color-border);
+    padding-block-start: var(--space-lg);
+  }
+
+  .post-list h2 {
+    font-size: var(--step-2);
+    margin-block: var(--space-2xs) var(--space-xs);
+  }
+
+  .post-list h2 a {
+    text-decoration: none;
+  }
+
+  .post-list h2 a:hover {
+    text-decoration: underline;
+  }
+</style>

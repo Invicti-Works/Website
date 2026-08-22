@@ -1,0 +1,51 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  summary?: string;
+  description?: string;
+  image?: string;
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  noindex?: boolean;
+}
+
+const { title, summary, description, image, type, publishedTime, noindex } = Astro.props;
+---
+
+<BaseLayout
+  title={title}
+  description={description ?? summary}
+  image={image}
+  type={type}
+  publishedTime={publishedTime}
+  noindex={noindex}
+>
+  <div class="container page-header">
+    <h1>{title}</h1>
+    {summary && <p class="page-header__summary">{summary}</p>}
+    <slot name="meta" />
+  </div>
+
+  <div class="container page-body">
+    <slot />
+  </div>
+</BaseLayout>
+
+<style>
+  .page-header {
+    padding-block: var(--space-xl) var(--space-md);
+    max-width: var(--measure);
+  }
+
+  .page-header__summary {
+    margin-block-start: var(--space-md);
+    font-size: var(--step-1);
+    color: var(--color-text-muted);
+  }
+
+  .page-body {
+    padding-block-end: var(--space-2xl);
+  }
+</style>

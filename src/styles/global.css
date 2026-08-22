@@ -1,0 +1,572 @@
+/* ------------------------------------------------------------------
+   Design tokens
+   Colours are defined once here. The neutral palette is deliberately
+   brand-agnostic -- swap --color-accent-* for the organization's brand
+   colours once they exist. Every text/background pair below meets
+   WCAG 2.1 AA (4.5:1 for body text, 3:1 for large text and UI borders).
+   ------------------------------------------------------------------ */
+:root {
+  color-scheme: light dark;
+
+  /* --- Brand ---------------------------------------------------
+     Sampled directly from the official logo artwork in brand/.
+     --brand-orange is 2.87:1 on white: it FAILS the WCAG AA minimum
+     of 4.5:1 for body text and 3:1 for large text. It is for the logo
+     and non-text graphics ONLY. For orange text use
+     --color-accent-warm, the same hue at 4.95:1. See docs/BRAND.md.
+     ------------------------------------------------------------- */
+  --brand-navy: #003870;
+  --brand-blue: #0058a0;
+  --brand-orange: #f87000;
+
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f4f6f9;
+  --color-bg-inset: #e7ecf3;
+  --color-text: #12161d;
+  --color-text-muted: #47505e;
+  --color-border: #d0d8e2;
+
+  /* Brand navy. 11.67:1 on white -- safe anywhere, including body text. */
+  --color-accent: var(--brand-navy);
+  --color-accent-hover: #002a56;
+  --color-accent-contrast: #ffffff;
+
+  /* Darkened brand orange for text. 4.95:1 on white. */
+  --color-accent-warm: #b85200;
+
+  --color-focus: #0b62d6;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+
+  /* Fluid type: scales between 320px and 1280px viewports. */
+  --step--1: clamp(0.875rem, 0.83rem + 0.22vw, 1rem);
+  --step-0: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+  --step-1: clamp(1.25rem, 1.15rem + 0.5vw, 1.5rem);
+  --step-2: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+  --step-3: clamp(1.875rem, 1.5rem + 1.9vw, 2.75rem);
+  --step-4: clamp(2.25rem, 1.7rem + 2.8vw, 3.5rem);
+
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1.25rem;
+  --space-lg: 2rem;
+  --space-xl: 3rem;
+  --space-2xl: 4.5rem;
+
+  --radius: 0.5rem;
+  --measure: 68ch;
+  --container: 72rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0e1420;
+    --color-bg-subtle: #151d2c;
+    --color-bg-inset: #1d2739;
+    --color-text: #e9ecf1;
+    --color-text-muted: #a8b2c2;
+    --color-border: #2c3646;
+
+    /* Brand navy is unreadable on dark (1.58:1), so dark mode uses a
+       tint of the brand blue instead. 8.81:1. */
+    --color-accent: #7fb6ff;
+    --color-accent-hover: #a9cfff;
+    --color-accent-contrast: #0b1220;
+
+    /* Lightened orange, 9.70:1 on the dark background. */
+    --color-accent-warm: #ffa869;
+
+    /* The logo keeps a graphics-only orange; it is never text. */
+    --brand-orange: #ff8b33;
+
+    --color-focus: #8ab4ff;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Reset
+   ------------------------------------------------------------------ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img,
+picture,
+svg,
+video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------
+   Typography
+   ------------------------------------------------------------------ */
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.2;
+  text-wrap: balance;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: var(--step-4);
+  letter-spacing: -0.02em;
+}
+h2 {
+  font-size: var(--step-3);
+  letter-spacing: -0.01em;
+}
+h3 {
+  font-size: var(--step-2);
+}
+h4 {
+  font-size: var(--step-1);
+}
+
+p,
+li {
+  text-wrap: pretty;
+}
+
+a {
+  color: var(--color-accent);
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  color: var(--color-accent-hover);
+}
+
+/* Focus ring: `:focus-visible` keeps it off mouse clicks but always present
+   for keyboard users. Never remove this without a replacement. */
+:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ------------------------------------------------------------------
+   Layout primitives
+   ------------------------------------------------------------------ */
+.container {
+  width: 100%;
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--space-md);
+}
+
+.prose {
+  max-width: var(--measure);
+}
+
+.prose > * + * {
+  margin-block-start: var(--space-md);
+}
+
+.prose h2 {
+  margin-block-start: var(--space-xl);
+}
+
+.prose h3 {
+  margin-block-start: var(--space-lg);
+}
+
+.prose ul,
+.prose ol {
+  padding-inline-start: 1.5em;
+}
+
+.prose li + li {
+  margin-block-start: var(--space-2xs);
+}
+
+.prose blockquote {
+  border-inline-start: 4px solid var(--color-accent);
+  padding-inline-start: var(--space-md);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.prose img {
+  border-radius: var(--radius);
+}
+
+.prose code {
+  background: var(--color-bg-inset);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.section {
+  padding-block: var(--space-2xl);
+}
+
+.section--subtle {
+  background-color: var(--color-bg-subtle);
+}
+
+/* ------------------------------------------------------------------
+   Components
+   ------------------------------------------------------------------ */
+.skip-link {
+  position: absolute;
+  left: var(--space-xs);
+  top: var(--space-xs);
+  z-index: 100;
+  padding: var(--space-xs) var(--space-md);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-radius: var(--radius);
+  font-weight: 600;
+  /* Visually hidden until focused, but always in the accessibility tree
+     and always the first thing a keyboard user reaches. */
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+  color: var(--color-accent-contrast);
+}
+
+.button {
+  display: inline-block;
+  padding: var(--space-sm) var(--space-lg);
+  border-radius: var(--radius);
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  font-weight: 600;
+  text-decoration: none;
+  border: 2px solid transparent;
+  /* 44px minimum touch target (WCAG 2.5.5). */
+  min-height: 44px;
+  line-height: 1.6;
+}
+
+.button:hover {
+  background: var(--color-accent-hover);
+  color: var(--color-accent-contrast);
+}
+
+.button--secondary {
+  background: transparent;
+  color: var(--color-accent);
+  border-color: currentColor;
+}
+
+.button--secondary:hover {
+  background: var(--color-bg-inset);
+  color: var(--color-accent-hover);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  height: 100%;
+}
+
+.card h3 {
+  font-size: var(--step-1);
+}
+
+.card a {
+  text-decoration: none;
+}
+
+.card a::after {
+  /* Makes the whole card clickable without nesting interactive elements,
+     which would break keyboard and screen-reader navigation. */
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.card {
+  position: relative;
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.eyebrow {
+  font-size: var(--step--1);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+/* Available to screen readers, hidden visually. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ------------------------------------------------------------------
+   Motion
+   ------------------------------------------------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Print
+   ------------------------------------------------------------------ */
+@media print {
+  .site-header nav,
+  .skip-link,
+  .site-footer {
+    display: none;
+  }
+
+  body {
+    color: #000;
+    background: #fff;
+  }
+}
+
+/* ------------------------------------------------------------------
+   Marketing components
+   ------------------------------------------------------------------ */
+
+/* Dark band used for the home hero and closing call to action. Colours are
+   fixed rather than tokenised because the band is dark in both themes. */
+.band {
+  background: var(--brand-navy);
+  color: #ffffff;
+}
+
+.band a:not(.button) {
+  color: #b9d5ff;
+}
+
+.band .muted,
+.band .eyebrow {
+  color: #b4c4da;
+}
+
+@media (prefers-color-scheme: dark) {
+  .band {
+    background: #04203f;
+  }
+}
+
+.band .button {
+  background: var(--brand-orange);
+  color: #17110a;
+  border-color: transparent;
+}
+
+.band .button:hover {
+  background: #ff8b33;
+  color: #17110a;
+}
+
+.band .button--secondary {
+  background: transparent;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.band .button--secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+/* Small status/category label. Never the only carrier of meaning -- the
+   text inside says what it is, so colour is decoration. */
+.badge {
+  display: inline-block;
+  padding: 0.2em 0.7em;
+  border-radius: 999px;
+  font-size: var(--step--1);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  color: var(--color-text-muted);
+}
+
+.badge--live {
+  border-color: transparent;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+}
+
+.badge--beta {
+  border-color: transparent;
+  background: var(--color-accent-warm);
+  color: #ffffff;
+}
+
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  list-style: none;
+  padding: 0;
+}
+
+/* Feature list with a brand tick. The marker is decorative, so it is
+   applied via ::before and hidden from assistive tech. */
+.checklist {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.checklist li {
+  position: relative;
+  padding-inline-start: 1.9em;
+}
+
+.checklist li::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0.42em;
+  width: 1.05em;
+  height: 0.55em;
+  border-inline-start: 3px solid var(--brand-orange);
+  border-block-end: 3px solid var(--brand-orange);
+  transform: rotate(-45deg);
+}
+
+.band .checklist li::before {
+  border-color: var(--brand-orange);
+}
+
+.feature-title {
+  font-weight: 700;
+  display: block;
+}
+
+/* Product card, used on the home page and the products index. */
+.product-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-lg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  height: 100%;
+  position: relative;
+}
+
+.product-card h3 {
+  font-size: var(--step-2);
+}
+
+.product-card h3 a {
+  text-decoration: none;
+}
+
+.product-card h3 a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.product-card h3 a:hover {
+  text-decoration: underline;
+}
+
+.product-card__tagline {
+  font-weight: 600;
+  color: var(--color-accent-warm);
+}
+
+.stack {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.split {
+  display: grid;
+  gap: var(--space-xl);
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+  align-items: start;
+}
+
+.section-head {
+  max-width: var(--measure);
+  margin-block-end: var(--space-lg);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-block-start: var(--space-lg);
+}

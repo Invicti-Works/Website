@@ -1,0 +1,82 @@
+---
+import site from '../data/site.json';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Root-relative path to a social share image, e.g. `/uploads/hero.jpg`. */
+  image?: string;
+  /** `article` for news posts, `website` for everything else. */
+  type?: 'website' | 'article';
+  publishedTime?: Date;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description = site.description,
+  image,
+  type = 'website',
+  publishedTime,
+  noindex = false,
+} = Astro.props;
+
+// Astro.site comes from `site` in astro.config.mjs. Falling back to the raw
+// request URL keeps `astro dev` working before the real domain is set.
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+// Every page gets a social card: the product/post image when there is one,
+// otherwise the branded default generated from the logo artwork.
+const socialImage = new URL(image ?? '/og-default.png', Astro.site ?? Astro.url).href;
+
+// Titles are "Page — Org", except the home page which is just "Org — Tagline".
+const isHome = Astro.url.pathname === '/';
+const fullTitle = isHome ? `${site.name} — ${site.tagline}` : `${title} — ${site.name}`;
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': site.organizationType,
+  name: site.name,
+  url: site.url,
+  description: site.description,
+  logo: new URL('/logo-mark.png', Astro.site ?? Astro.url).href,
+  ...(site.email ? { email: site.email } : {}),
+  ...(site.phone ? { telephone: site.phone } : {}),
+  ...(site.address.city
+    ? {
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: site.address.street,
+          addressLocality: site.address.city,
+          addressRegion: site.address.region,
+          postalCode: site.address.postalCode,
+          addressCountry: site.address.country,
+        },
+      }
+    : {}),
+  sameAs: Object.values(site.social).filter(Boolean),
+};
+---
+
+<title>{fullTitle}</title>
+<meta name="description" content={description} />
+<link rel="canonical" href={canonical} />
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+
+<meta property="og:type" content={type} />
+<meta property="og:title" content={fullTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:site_name" content={site.name} />
+<meta property="og:locale" content={site.locale} />
+<meta property="og:image" content={socialImage} />
+<meta property="og:image:alt" content={`${site.name} logo`} />
+{publishedTime && <meta property="article:published_time" content={publishedTime.toISOString()} />}
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={fullTitle} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={socialImage} />
+
+<link rel="alternate" type="application/rss+xml" title={`${site.name} — News`} href="/rss.xml" />
+
+<script type="application/ld+json" set:html={JSON.stringify(organizationSchema)} is:inline />

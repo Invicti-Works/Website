@@ -1,0 +1,26 @@
+---
+import type { CollectionEntry } from 'astro:content';
+import { CATEGORY_LABELS, STATUS_LABELS } from '../lib/content';
+
+interface Props {
+  product: CollectionEntry<'products'>;
+}
+
+const { product } = Astro.props;
+const { title, tagline, summary, category, status } = product.data;
+
+// `live` and `beta` get a filled badge; everything else stays neutral. The
+// label text carries the meaning, so colour is never the only signal.
+const badgeClass =
+  status === 'live' ? 'badge badge--live' : status === 'beta' ? 'badge badge--beta' : 'badge';
+---
+
+<article class="product-card">
+  <ul class="badge-row" role="list">
+    <li><span class={badgeClass}>{STATUS_LABELS[status]}</span></li>
+    <li><span class="badge">{CATEGORY_LABELS[category]}</span></li>
+  </ul>
+  <h3><a href={`/products/${product.id}`}>{title}</a></h3>
+  <p class="product-card__tagline">{tagline}</p>
+  <p class="muted">{summary}</p>
+</article>

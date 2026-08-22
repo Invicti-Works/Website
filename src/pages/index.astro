@@ -1,0 +1,168 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProductCard from '../components/ProductCard.astro';
+import site from '../data/site.json';
+import { getProducts, getNews, formatDate } from '../lib/content';
+
+const products = (await getProducts()).slice(0, 3);
+const news = (await getNews()).slice(0, 2);
+
+// Placeholder positioning. Replace the copy, keep the structure.
+const capabilities = [
+  {
+    title: 'PLACEHOLDER — Product strategy',
+    body: 'One or two sentences on how you take an idea to a shippable product.',
+  },
+  {
+    title: 'PLACEHOLDER — SaaS platforms',
+    body: 'What you build on the web side, and what makes it different.',
+  },
+  {
+    title: 'PLACEHOLDER — Mobile applications',
+    body: 'iOS and Android work, and how it connects to the platform side.',
+  },
+  {
+    title: 'PLACEHOLDER — Go to market',
+    body: 'How you help a product find its buyers once it exists.',
+  },
+];
+---
+
+<BaseLayout title="Home">
+  <section class="band hero">
+    <div class="container hero__inner">
+      <p class="eyebrow">SaaS and mobile applications</p>
+      <h1>{site.tagline}</h1>
+      <p class="hero__lede">{site.description}</p>
+      <div class="cta-row">
+        <a class="button" href="/contact">Talk to us</a>
+        <a class="button button--secondary" href="/products">See our products</a>
+      </div>
+    </div>
+  </section>
+
+  {
+    products.length > 0 && (
+      <section class="section" aria-labelledby="products-heading">
+        <div class="container">
+          <div class="section-head">
+            <h2 id="products-heading">Our products</h2>
+            <p class="muted">
+              Applications we build, ship and support. Each one has its own page with
+              features, platforms and pricing.
+            </p>
+          </div>
+          <ul class="grid" role="list">
+            {products.map((product) => (
+              <li>
+                <ProductCard product={product} />
+              </li>
+            ))}
+          </ul>
+          <p class="section__more">
+            <a href="/products">All products</a>
+          </p>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="section section--subtle" aria-labelledby="capabilities-heading">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="capabilities-heading">What we do</h2>
+        <p class="muted">PLACEHOLDER — one line framing the four areas below.</p>
+      </div>
+      <ul class="grid" role="list">
+        {
+          capabilities.map((item) => (
+            <li>
+              <div class="card">
+                <h3>{item.title}</h3>
+                <p class="muted">{item.body}</p>
+              </div>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </section>
+
+  {
+    news.length > 0 && (
+      <section class="section" aria-labelledby="news-heading">
+        <div class="container">
+          <div class="section-head">
+            <h2 id="news-heading">Latest news</h2>
+          </div>
+          <ul class="grid" role="list">
+            {news.map((post) => (
+              <li>
+                <article class="card">
+                  <p class="eyebrow">
+                    <time datetime={post.data.date.toISOString()}>
+                      {formatDate(post.data.date)}
+                    </time>
+                  </p>
+                  <h3>
+                    <a href={`/news/${post.id}`}>{post.data.title}</a>
+                  </h3>
+                  <p class="muted">{post.data.summary}</p>
+                </article>
+              </li>
+            ))}
+          </ul>
+          <p class="section__more"><a href="/news">All news</a></p>
+        </div>
+      </section>
+    )
+  }
+
+  <section class="band section" aria-labelledby="cta-heading">
+    <div class="container closing">
+      <h2 id="cta-heading">PLACEHOLDER — closing call to action</h2>
+      <p>
+        One or two sentences telling a prospect exactly what happens when they get in
+        touch, and how quickly.
+      </p>
+      <div class="cta-row">
+        <a class="button" href="/contact">Start a conversation</a>
+        <a class="button button--secondary" href={`mailto:${site.email}`}>{site.email}</a>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .hero {
+    padding-block: var(--space-2xl);
+  }
+
+  .hero__inner {
+    max-width: 46rem;
+  }
+
+  .hero h1 {
+    margin-block-start: var(--space-sm);
+  }
+
+  .hero__lede {
+    margin-block-start: var(--space-md);
+    font-size: var(--step-1);
+    color: #cfe0f7;
+  }
+
+  .grid {
+    list-style: none;
+    padding: 0;
+  }
+
+  .section__more {
+    margin-block-start: var(--space-lg);
+    font-weight: 600;
+  }
+
+  .closing {
+    max-width: var(--measure);
+  }
+</style>

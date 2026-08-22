@@ -1,0 +1,6 @@
+# Every pull request requests a review from the site maintainers by default.
+# Replace the placeholder with real GitHub usernames once Josh has accepted
+# the org invitation, e.g.:  *  @erica-handle @josh-handle
+# Until then this file is inert -- CODEOWNERS entries for non-members are ignored.
+
+# *  @your-github-handle @joshs-github-handle
