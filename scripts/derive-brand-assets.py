@@ -24,6 +24,13 @@ import numpy as np
 # Which raw file feeds which asset. Verified by measuring each file's trimmed
 # aspect ratio and dominant colour rather than by filename, since the raw
 # names carry no meaning.
+# Founder headshots. Square-cropped and resized to a single consistent size so
+# the team cards line up regardless of what the originals happen to be.
+PHOTOS = {
+    'erica-gaffney': 'brand/photos/erica-gaffney.jpeg',
+    'josh-forman': 'brand/photos/josh-forman.jpeg',
+}
+
 SOURCES = {
     'horizontal_colour': 'brand/raw-02_04_41_PM_(2).png',   # ar 4.09, colour
     'horizontal_white': 'brand/raw-02_04_42_PM_(6).png',    # ar 3.62, white
@@ -64,6 +71,30 @@ def square(im: Image.Image, size: int, pad: float = 0.06) -> Image.Image:
     return canvas
 
 
+def square_crop(im: Image.Image, size: int) -> Image.Image:
+    """Centre-crop to a square, then resize. Never upscales past the source."""
+    side = min(im.width, im.height)
+    left = (im.width - side) // 2
+    top = (im.height - side) // 2
+    im = im.crop((left, top, left + side, top + side))
+    return im.resize((size, size), Image.LANCZOS)
+
+
+def build_photos() -> list[str]:
+    """Derive team headshots into public/team/."""
+    os.makedirs(f'{OUT}/team', exist_ok=True)
+    written = []
+    for slug, source in PHOTOS.items():
+        if not os.path.exists(source):
+            print(f'skipping {slug}: {source} not found')
+            continue
+        im = Image.open(source).convert('RGB')
+        # 320px covers a 160px avatar at 2x DPR without upscaling these sources.
+        square_crop(im, 320).save(f'{OUT}/team/{slug}.jpg', quality=82, optimize=True, progressive=True)
+        written.append(f'team/{slug}.jpg')
+    return written
+
+
 def main() -> None:
     os.makedirs(OUT, exist_ok=True)
     written = []
@@ -100,6 +131,8 @@ def main() -> None:
     og.paste(lock, ((1200 - lock.width) // 2, (630 - lock.height) // 2), lock)
     og.save(f'{OUT}/og-default.png', optimize=True)
     written.append('og-default.png')
+
+    written += build_photos()
 
     for name in written:
         print(f'{name:28} {os.path.getsize(f"{OUT}/{name}") / 1024:7.1f} KB')

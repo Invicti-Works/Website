@@ -88,6 +88,14 @@ const team = defineCollection({
     /** Short line used in listings; the Markdown body is the full bio. */
     summary: z.string(),
     order: z.number().default(100),
+    /**
+     * Headshot path under `public/`, e.g. `/team/josh-forman.jpg`. Deliberately
+     * a bare path rather than the `{src, alt}` pair used elsewhere: the card
+     * renders the person's name immediately beside the photo, so alt text here
+     * would be read out twice by a screen reader. It is rendered `alt=""`.
+     * Derived from brand/photos/ by scripts/derive-brand-assets.py.
+     */
+    image: z.string().optional(),
     links: z
       .object({
         linkedin: z.string().optional(),

@@ -33,6 +33,19 @@ const bios = await Promise.all(
         <div class="team__list">
           {bios.map(({ member, Content }) => (
             <article class="team__member">
+              {member.data.image && (
+                /* alt="" on purpose: the name sits right beside it, so
+                   describing the photo would just repeat that name. */
+                <img
+                  class="team__photo"
+                  src={member.data.image}
+                  alt=""
+                  width="120"
+                  height="120"
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
               <h3>{member.data.name}</h3>
               <p class="team__role">{member.data.role}</p>
               <p class="muted team__summary">{member.data.summary}</p>
@@ -89,6 +102,16 @@ const bios = await Promise.all(
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
     background: var(--color-bg-subtle);
+  }
+
+  .team__photo {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-block-end: var(--space-md);
+    border: 3px solid var(--color-bg);
+    box-shadow: 0 0 0 1px var(--color-border);
   }
 
   .team__member h3 {
