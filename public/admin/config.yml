@@ -9,9 +9,17 @@ backend:
   name: github
   repo: Invicti-Works/Website
   branch: main
-  # REPLACE with the URL of your deployed sveltia-cms-auth Worker.
-  # See docs/SETUP.md, step 5. Sign-in fails until this is set.
-  base_url: https://REPLACE-ME.workers.dev
+  # Sign-in is handled by this site's own Worker (worker/cms-auth.js) rather
+  # than a separate authentication service, so these point back at us.
+  # Sveltia opens `<base_url>/<auth_endpoint>` as the sign-in popup.
+  #
+  # Requires the custom domain to be attached -- see docs/SETUP.md step 4 --
+  # and GITHUB_CLIENT_ID / GITHUB_CLIENT_SECRET set on the Worker (step 5).
+  base_url: https://invicti.works
+  auth_endpoint: oauth/authorize
+  # Narrower than the default `repo,user`: enough to read and commit content,
+  # without handing the token access to an editor's private repositories.
+  auth_scope: public_repo
 
 media_folder: public/uploads
 public_folder: /uploads

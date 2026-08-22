@@ -79,93 +79,84 @@ itself, so there are no deployment secrets to manage or rotate.
 
 ## 4. The domain
 
-**Already done, in code.** `invicti.works` and `www.invicti.works` are declared
-as custom domains in `wrangler.jsonc`:
+**Blocked on one manual step, and it is blocking deploys too.**
 
-```jsonc
-"routes": [
-  { "pattern": "invicti.works", "custom_domain": true },
-  { "pattern": "www.invicti.works", "custom_domain": true }
-]
+`invicti.works` and `www.invicti.works` were declared as custom domains in
+`wrangler.jsonc`. The deploy failed:
+
+```
+Hostname 'invicti.works' already has externally managed DNS records
+(A, CNAME, etc). Delete them first or try a different hostname. [code: 100117]
+No targets deployed for websitebuild
 ```
 
-Cloudflare creates the DNS records and issues the TLS certificates on deploy, so
-there is no dashboard step and the live hostnames stay in version control.
+Cloudflare will not create a custom domain on a hostname that already has DNS
+records. Worse, because the trigger update failed, **the whole deploy failed**
+— so the site content stopped updating too. The `routes` block has been
+commented out of `wrangler.jsonc` to get deploys working again.
 
-`custom_domain` is the right mode here rather than a plain route, because the
-Worker *is* the origin — there is no server behind it. Both hostnames serve the
-same site, and the canonical URL emitted by `src/components/Seo.astro` points at
-the apex, so search engines are not offered two copies of every page.
+To finish the job:
 
-**If a deploy fails on this**, it is almost always because the hostname already
-has a CNAME record — Cloudflare will not create a custom domain over one. Delete
-the stale record under **DNS → Records** and the next deploy will succeed.
+1. Cloudflare → **DNS → Records**.
+2. Delete the existing records for `invicti.works` and `www` — typically an
+   `A`, `AAAA` or `CNAME` left by a previous host or a parking page. Do **not**
+   delete `MX` or `TXT` records: those carry email and domain verification.
+3. Uncomment the `routes` block in `wrangler.jsonc` (it is left in the file with
+   the exact lines to restore) and merge.
+4. The next deploy creates the custom domains, issues the certificates and
+   writes the DNS records itself.
 
-To change the domain later, edit the `routes` array and merge; do not add it
-through the dashboard, or the two will drift.
+Until then the site is reachable at `https://websitebuild.<subdomain>.workers.dev`
+— `workers_dev` and `preview_urls` are both enabled in `wrangler.jsonc` so
+there is always a working URL and per-branch previews.
 
-## 5. Set up CMS sign-in
+## 5. CMS sign-in
 
-The CMS saves by committing to GitHub, so it needs permission to act as the
-signed-in person. That takes a tiny authentication Worker plus a GitHub OAuth
-app. Both are free and this is a one-time setup.
+The CMS commits to GitHub as the signed-in person, so it needs an OAuth flow.
+**That flow is already built and lives in this repository** — `worker/cms-auth.js`,
+vendored from [sveltia-cms-auth](https://github.com/sveltia/sveltia-cms-auth)
+(MIT) and served by our own Worker at `/oauth/authorize` and `/oauth/redirect`.
 
-### 5a. Deploy the authentication Worker
+That means no second Worker to deploy and no separate service to keep alive.
+Two things remain, and both need a browser.
 
-1. Go to <https://github.com/sveltia/sveltia-cms-auth>.
-2. Use the **Deploy to Cloudflare Workers** button, and pick your account.
-3. When it finishes, note the Worker's URL:
-   `https://sveltia-cms-auth.<your-subdomain>.workers.dev`
+### 5a. Register the GitHub OAuth app
 
-### 5b. Register the GitHub OAuth app
-
-1. Go to <https://github.com/organizations/Invicti-Works/settings/applications>
-   → **New OAuth App**. Registering it under the *organization* rather than your
-   personal account means it survives you changing roles.
+1. <https://github.com/organizations/Invicti-Works/settings/applications> →
+   **New OAuth App**. Register it under the *organization*, not your personal
+   account, so it survives you changing roles.
 2. Fill in:
 
    | Field | Value |
    | --- | --- |
-   | Application name | `Website CMS` |
+   | Application name | `Invicti.Works CMS` |
    | Homepage URL | `https://invicti.works` |
-   | Authorization callback URL | `https://sveltia-cms-auth.<your-subdomain>.workers.dev/callback` |
+   | Authorization callback URL | `https://invicti.works/oauth/redirect` |
 
-   The callback URL **must** end in `/callback`.
-3. Register, then **Generate a new client secret**. Copy both the **Client ID**
-   and the **Client Secret** now — the secret is shown only once.
+   The callback URL must match exactly, including the path.
+3. Register, then **Generate a new client secret**. Copy the **Client ID** and
+   the **Client Secret** now — the secret is shown once.
 
-### 5c. Give the Worker its credentials
+### 5b. Give the Worker its credentials
 
-In the Cloudflare dashboard open the `sveltia-cms-auth` Worker →
-**Settings → Variables and Secrets**, and add:
+Cloudflare → **Workers & Pages → websitebuild → Settings → Variables and Secrets**:
 
 | Name | Value | Type |
 | --- | --- | --- |
-| `GITHUB_CLIENT_ID` | the Client ID from 5b | Text |
-| `GITHUB_CLIENT_SECRET` | the Client Secret from 5b | **Secret (encrypt)** |
+| `GITHUB_CLIENT_ID` | Client ID from 5a | Text |
+| `GITHUB_CLIENT_SECRET` | Client Secret from 5a | **Secret (encrypt)** |
 | `ALLOWED_DOMAINS` | `invicti.works` | Text |
 
-`ALLOWED_DOMAINS` is optional but you should set it: without it, anyone could
-point their own site at your authentication Worker.
+`ALLOWED_DOMAINS` is optional but you should set it. Without it the sign-in
+endpoint will mint tokens for a popup opened by any site, and the handler skips
+its origin check on the way back.
 
-Deploy the Worker again so the variables take effect.
+Redeploy so the variables take effect. `https://invicti.works/admin/` will then
+sign in with GitHub.
 
-### 5d. Point the CMS at the Worker
-
-Edit `public/admin/config.yml` in this repository and replace the placeholder:
-
-```yaml
-backend:
-  name: github
-  repo: Invicti-Works/Website
-  branch: main
-  base_url: https://sveltia-cms-auth.<your-subdomain>.workers.dev
-```
-
-Commit and push. Once the build finishes, `https://invicti.works/admin/` will
-let you sign in with GitHub.
-
----
+> Sign-in needs step 4 finished first. `base_url` in `public/admin/config.yml`
+> points at `https://invicti.works`, so the popup only resolves once the custom
+> domain is attached.
 
 ## 6. Lock the CMS behind Cloudflare Access
 
