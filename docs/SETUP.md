@@ -58,13 +58,18 @@ This connects the repository so every merge to `main` publishes automatically.
 
    | Field | Value |
    | --- | --- |
-   | Project name | `website` (must match `name` in `wrangler.jsonc`) |
+   | Project name | `websitebuild` (keep `name` in `wrangler.jsonc` in sync) |
    | Production branch | `main` |
    | Build command | `npm run build` |
    | Build output directory | `dist` |
 
 5. **Save and Deploy.** The first build takes a couple of minutes.
-6. You now have a live URL like `https://invicti-works-website.<subdomain>.workers.dev`.
+
+> **Connect the repository to exactly one Worker.** Every connected Worker
+> builds on every push, and each one posts its own check on every pull request.
+> A second, misconfigured connection means a permanently red check that has
+> nothing to do with your code.
+6. You now have a live URL like `https://websitebuild.<subdomain>.workers.dev`.
    Open it and confirm the site loads.
 
 No API token needs to be added to GitHub — Cloudflare pulls from the repository

@@ -1,10 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
 
-  // Worker name. MUST match the Worker service in the Cloudflare dashboard --
-  // Workers Builds runs `wrangler deploy`, which targets this name, and a
-  // mismatch fails the build.
-  "name": "website",
+  // Worker name. Keep this in sync with the Worker service in the Cloudflare
+  // dashboard. Workers Builds deploys to the connected service regardless of
+  // this field, but `npm run deploy` (a manual `wrangler deploy`) targets it,
+  // so a stale value here would deploy to the wrong Worker.
+  "name": "websitebuild",
   "compatibility_date": "2026-08-22",
 
   // Static-assets-only Worker: there is no "main" entrypoint and no "binding",
