@@ -9,10 +9,10 @@
  *
  * It does two things: signs editors in to the CMS at /admin/ (the OAuth flow is
  * vendored from sveltia-cms-auth; see worker/cms-auth.js), and receives the
- * "Find your solution" enquiry form (see worker/enquiry.js).
+ * "Find your solution" contact form (see worker/contact.js).
  */
 import cmsAuth from './cms-auth.js';
-import { handleEnquiry } from './enquiry.js';
+import { handleContact } from './contact.js';
 
 /** Paths the vendored handler owns. Everything else falls through to assets. */
 const AUTH_PATHS = new Set(['/oauth/authorize', '/oauth/redirect']);
@@ -34,7 +34,7 @@ const normalize = (request, pathname) => {
   return new Request(url, request);
 };
 
-const ENQUIRY_PATH = '/api/enquiry';
+const CONTACT_PATH = '/api/contact';
 
 export default {
   async fetch(request, env, ctx) {
@@ -56,8 +56,8 @@ export default {
       return cmsAuth.fetch(normalize(request, route), env, ctx);
     }
 
-    if (route === ENQUIRY_PATH) {
-      return handleEnquiry(request, env);
+    if (route === CONTACT_PATH) {
+      return handleContact(request, env);
     }
 
     // Not an OAuth path, and the asset layer already found no file for it.

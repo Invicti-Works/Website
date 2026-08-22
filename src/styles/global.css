@@ -6,7 +6,10 @@
    WCAG 2.1 AA (4.5:1 for body text, 3:1 for large text and UI borders).
    ------------------------------------------------------------------ */
 :root {
-  color-scheme: light dark;
+  /* `light` only, not `light dark`. The site has one palette by choice -- see
+     the note below -- and advertising dark support would still let the browser
+     render form controls, scrollbars and autofill in dark. */
+  color-scheme: light;
 
   /* --- Brand ---------------------------------------------------
      Sampled directly from the official logo artwork in brand/.
@@ -61,30 +64,16 @@
   --container: 72rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0e1420;
-    --color-bg-subtle: #151d2c;
-    --color-bg-inset: #1d2739;
-    --color-text: #e9ecf1;
-    --color-text-muted: #a8b2c2;
-    --color-border: #2c3646;
-
-    /* Brand navy is unreadable on dark (1.58:1), so dark mode uses a
-       tint of the brand blue instead. 8.81:1. */
-    --color-accent: #7fb6ff;
-    --color-accent-hover: #a9cfff;
-    --color-accent-contrast: #0b1220;
-
-    /* Lightened orange, 9.70:1 on the dark background. */
-    --color-accent-warm: #ffa869;
-
-    /* The logo keeps a graphics-only orange; it is never text. */
-    --brand-orange: #ff8b33;
-
-    --color-focus: #8ab4ff;
-  }
-}
+/* ------------------------------------------------------------------
+   No dark mode, deliberately.
+   The site renders identically for every visitor regardless of their
+   operating system setting. It previously carried a full dark palette,
+   which meant two people looking at the same page saw different sites --
+   one white, one near-black -- and only one of them had ever been looked
+   at properly. One palette is one thing to get right.
+   The contrast ratios noted against each token above are the light ones,
+   and they are now the only ones that apply.
+   ------------------------------------------------------------------ */
 
 /* ------------------------------------------------------------------
    Reset
@@ -268,17 +257,22 @@ a:hover {
 }
 
 .button {
-  display: inline-block;
-  padding: var(--space-sm) var(--space-lg);
-  border-radius: var(--radius);
+  /* inline-flex, not inline-block: it centres a short label like "Send" in the
+     taller pill, which inline-block leaves sitting high. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm) var(--space-xl);
+  border-radius: 999px;
   background: var(--color-accent);
   color: var(--color-accent-contrast);
   font-weight: 600;
   text-decoration: none;
   border: 2px solid transparent;
-  /* 44px minimum touch target (WCAG 2.5.5). */
-  min-height: 44px;
-  line-height: 1.6;
+  /* Comfortably past the 44px minimum touch target (WCAG 2.5.5), and scaled to
+     hold its own beside the header lockup now that it is twice the size. */
+  min-height: 52px;
+  line-height: 1.4;
 }
 
 .button:hover {
@@ -412,12 +406,6 @@ a:hover {
 .band .muted,
 .band .eyebrow {
   color: #b4c4da;
-}
-
-@media (prefers-color-scheme: dark) {
-  .band {
-    background: #04203f;
-  }
 }
 
 .band .button {

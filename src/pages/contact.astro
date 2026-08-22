@@ -15,14 +15,14 @@ import site from '../data/site.json';
     </p>
 
     <p class="contact__cta">
-      <a class="button" href={`mailto:${site.email}?subject=${encodeURIComponent('Enquiry')}`}>
+      <a class="button" href={`mailto:${site.email}?subject=${encodeURIComponent('Getting in touch')}`}>
         Email {site.email}
       </a>
     </p>
 
     {/*
       NOTE: this is a fully static site, so there is no server to accept a form
-      post. A real enquiry form needs a decision first -- see docs/SETUP.md,
+      post. A real contact form needs a decision first -- see docs/SETUP.md,
       "Contact and lead-capture forms". Until then this mailto always works and
       cannot silently drop a lead.
     */}
