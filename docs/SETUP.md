@@ -58,7 +58,7 @@ This connects the repository so every merge to `main` publishes automatically.
 
    | Field | Value |
    | --- | --- |
-   | Project name | `invicti-works-website` |
+   | Project name | `website` (must match `name` in `wrangler.jsonc`) |
    | Production branch | `main` |
    | Build command | `npm run build` |
    | Build output directory | `dist` |
