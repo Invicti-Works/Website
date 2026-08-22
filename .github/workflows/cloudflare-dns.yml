@@ -152,4 +152,6 @@ jobs:
             fi
           done < doomed.tsv
 
-          echo "Done. Next: uncomment the routes block in wrangler.jsonc and merge."
+          echo "Done."
+          echo "Next: make sure the routes block in wrangler.jsonc has reached main,"
+          echo "then re-run the Cloudflare deploy so the custom domains attach."
