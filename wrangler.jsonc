@@ -1,41 +1,51 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
 
-  // Worker name. Keep this in sync with the Worker service in the Cloudflare
-  // dashboard. Workers Builds deploys to the connected service regardless of
-  // this field, but `npm run deploy` (a manual `wrangler deploy`) targets it,
-  // so a stale value here would deploy to the wrong Worker.
+  // Must match the Worker service in the Cloudflare dashboard. Workers Builds
+  // deploys to the connected service regardless, but `npm run deploy` targets
+  // this name, so a stale value would push to the wrong Worker.
   "name": "websitebuild",
   "compatibility_date": "2026-08-22",
 
-  // Custom domains. Cloudflare creates the DNS records and issues the TLS
-  // certificates automatically on deploy -- no dashboard step, and the live
-  // hostnames stay in version control rather than in someone's memory.
-  //
-  // `custom_domain` (not a plain route) is correct here because the Worker IS
-  // the origin: there is no server behind it. Both hostnames serve the same
-  // site; the canonical URL emitted by src/components/Seo.astro points at the
-  // apex, so search engines are not offered two copies.
-  //
-  // Note: Cloudflare refuses to create a custom domain on a hostname that
-  // already has a CNAME record. If the deploy fails on this, delete the stale
-  // record for that hostname in DNS and redeploy.
-  "routes": [
-    { "pattern": "invicti.works", "custom_domain": true },
-    { "pattern": "www.invicti.works", "custom_domain": true }
-  ],
+  // Entry point. Static pages never reach it -- see the comment in
+  // worker/index.js -- it exists to sign CMS editors in at /admin/.
+  "main": "./worker/index.js",
 
-  // Static-assets-only Worker: there is no "main" entrypoint and no "binding",
-  // so no Worker script ever runs. Asset requests are free and unmetered.
-  // Adding "main" later would move this onto the metered request tier.
   "assets": {
     "directory": "./dist",
     // Serve the nearest 404.html for unmatched paths. This is a content site,
-    // NOT a single-page app -- "single-page-application" would return HTTP 200
+    // NOT a single-page app: "single-page-application" would return HTTP 200
     // for every bad URL and let soft-404s into the search index.
     "not_found_handling": "404-page",
-    "html_handling": "auto-trailing-slash"
+    "html_handling": "auto-trailing-slash",
+    // Lets worker/index.js hand non-OAuth requests back to the asset layer.
+    "binding": "ASSETS",
+    // Only these two paths invoke the Worker before assets are checked, so
+    // ordinary page and image requests stay on the free, unmetered tier.
+    "run_worker_first": ["/oauth/authorize", "/oauth/redirect"]
   },
+
+  // Keeps <name>.<subdomain>.workers.dev serving, and restores per-branch and
+  // per-commit preview URLs. Without these, a deploy warns that previews are
+  // disabled and there is no working URL while the custom domain is unset.
+  "workers_dev": true,
+  "preview_urls": true,
+
+  // NOTE: custom domains are deliberately NOT configured here yet.
+  //
+  // A previous deploy failed with:
+  //   Hostname 'invicti.works' already has externally managed DNS records
+  //   (A, CNAME, etc). Delete them first or try a different hostname. [100117]
+  //
+  // Cloudflare will not create a custom domain over pre-existing DNS records,
+  // and because the trigger update failed, the whole deploy failed with it --
+  // taking the site content down with it. Re-add the block below only after
+  // the stale records for the apex and www are deleted in DNS -> Records:
+  //
+  //   "routes": [
+  //     { "pattern": "invicti.works", "custom_domain": true },
+  //     { "pattern": "www.invicti.works", "custom_domain": true }
+  //   ],
 
   "observability": {
     "enabled": true

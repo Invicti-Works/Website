@@ -77,15 +77,24 @@ src/
   pages/            Routes
   lib/content.ts    Collection queries, sorting, draft filtering, labels
   styles/global.css Design tokens, base styles, marketing components
+worker/
+  index.js          Worker entry: OAuth paths, else hand back to assets
+  cms-auth.js       GitHub OAuth flow, vendored from sveltia-cms-auth (MIT)
 public/             Derived web assets, CMS, uploads
 wrangler.jsonc      Cloudflare deployment config
 ```
 
 ## Notes for whoever works on this next
 
-- **`wrangler.jsonc` has no `main` on purpose.** Static assets only means requests
-  are free and unmetered. Adding a Worker script (for a contact-form endpoint,
-  say) moves the site onto the metered tier — do it deliberately.
+- **`wrangler.jsonc` has a `main`, but static pages never reach it.** Assets are
+  served without invoking the Worker; only the two paths in
+  `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`) run it, so
+  ordinary traffic stays on the free unmetered asset tier. The Worker exists
+  solely to sign CMS editors in — see `worker/index.js`.
+- **Custom domains are commented out in `wrangler.jsonc`.** Cloudflare refused to
+  create them over pre-existing DNS records, and that failure took the whole
+  deploy down with it. Restore the block after clearing DNS — `docs/SETUP.md`
+  step 4 has the exact error and procedure.
 - **`not_found_handling` is `404-page`, not `single-page-application`.** This is a
   content site; SPA handling returns HTTP 200 for every bad URL and leaks
   soft-404s into the search index.
