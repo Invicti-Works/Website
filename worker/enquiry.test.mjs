@@ -91,5 +91,23 @@ for (const path of ['/api/enquiry', '/api/enquiry/']) {
   if (!ok) failures++;
 }
 
+// The OAuth paths matter more than the enquiry one here: cms-auth.js re-parses
+// the URL off the request it is handed and matches the path exactly, so routing
+// the trailing-slash form to it without rewriting the URL produces its own
+// empty-bodied 404 -- a blank page in the sign-in popup. Asserting the route is
+// "reached" is not enough; this asserts it is *answered*.
+for (const path of ['/oauth/authorize', '/oauth/authorize/']) {
+  const res = await workerEntry.fetch(
+    new Request(`https://invicti.works${path}?provider=github&site_id=invicti.works`),
+    { ASSETS: assets, ALLOWED_DOMAINS: 'invicti.works', GITHUB_CLIENT_ID: 'id', GITHUB_CLIENT_SECRET: 'secret' },
+  );
+  // 302 to GitHub is the correct answer with credentials present. A 404, or a
+  // 200 from the asset stub, both mean the path never reached the handler.
+  const location = res.headers.get('location') ?? '';
+  const ok = res.status === 302 && location.startsWith('https://github.com/login/oauth/authorize');
+  console.log(`${ok ? 'PASS' : 'FAIL'}  auth ${path.padEnd(19)} got ${res.status} ${location.slice(0, 44)}`);
+  if (!ok) failures++;
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

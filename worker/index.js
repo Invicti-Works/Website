@@ -17,6 +17,23 @@ import { handleEnquiry } from './enquiry.js';
 /** Paths the vendored handler owns. Everything else falls through to assets. */
 const AUTH_PATHS = new Set(['/oauth/authorize', '/oauth/redirect']);
 
+/**
+ * Rebuild a request with `pathname` replaced, preserving method, headers, body
+ * and query string. Returns the original untouched when nothing changed, so the
+ * common case allocates nothing.
+ */
+const normalize = (request, pathname) => {
+  const url = new URL(request.url);
+
+  if (url.pathname === pathname) {
+    return request;
+  }
+
+  url.pathname = pathname;
+
+  return new Request(url, request);
+};
+
 const ENQUIRY_PATH = '/api/enquiry';
 
 export default {
@@ -30,7 +47,13 @@ export default {
     const route = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
 
     if (AUTH_PATHS.has(route)) {
-      return cmsAuth.fetch(request, env, ctx);
+      // Hand over a request whose URL carries the normalised path, not just the
+      // normalised string. cms-auth.js re-parses the URL off the request it is
+      // given and matches the path exactly, so passing the original through
+      // would have it fall to its own `404` with an empty body -- a blank page
+      // in the sign-in popup, which is precisely the symptom this is meant to
+      // rule out. Normalising only for the branch decision fixed nothing.
+      return cmsAuth.fetch(normalize(request, route), env, ctx);
     }
 
     if (route === ENQUIRY_PATH) {
