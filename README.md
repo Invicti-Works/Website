@@ -14,7 +14,7 @@ applications. Built with [Astro](https://astro.build), edited through
 
 Two public pages. The home page says what we engineer -- mobile and web
 applications, for individuals and organizations alike -- carries the "Find your
-solution" enquiry form, and ends with the founder bios. `/contact` is a
+solution" contact form, and ends with the founder bios. `/contact` is a
 paragraph and an email address.
 
 The header is the logo alone. Both calls to action live in the hero, and the
@@ -42,7 +42,7 @@ Drafts are visible in `npm run dev` and excluded from production builds.
 | --- | --- |
 | `npm run dev` | Local dev server with hot reload |
 | `npm run check` | Type-check, and validate all content against its schema |
-| `npm test` | Test the Worker's enquiry endpoint |
+| `npm test` | Test the Worker's contact endpoint |
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run cf:preview` | Build, then serve through the real Cloudflare runtime |
@@ -75,10 +75,10 @@ src/
   lib/content.ts    Collection queries, sorting, draft filtering
   styles/global.css Design tokens, base styles, marketing components
 worker/
-  index.js          Worker entry: OAuth and /api/enquiry, else back to assets
+  index.js          Worker entry: OAuth and /api/contact, else back to assets
   cms-auth.js       GitHub OAuth flow, vendored from sveltia-cms-auth (MIT)
-  enquiry.js        The "Find your solution" form handler
-  enquiry.test.mjs  Its tests -- `npm test`, and CI runs them
+  contact.js        The "Find your solution" form handler
+  contact.test.mjs  Its tests -- `npm test`, and CI runs them
 public/             Derived web assets, CMS, uploads
 wrangler.jsonc      Cloudflare deployment config
 ```
@@ -88,13 +88,19 @@ wrangler.jsonc      Cloudflare deployment config
 - **`wrangler.jsonc` has a `main`, but static pages never reach it.** Assets are
   served without invoking the Worker; only the paths in
   `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`,
-  `/api/enquiry`) run it, so ordinary traffic stays on the free unmetered asset
-  tier. The Worker signs CMS editors in and receives the enquiry form — see
+  `/api/contact`) run it, so ordinary traffic stays on the free unmetered asset
+  tier. The Worker signs CMS editors in and receives the contact form — see
   `worker/index.js`.
+- **A plain-text variable set in the Cloudflare dashboard does not survive.**
+  `wrangler deploy` deletes every plain var not present in `wrangler.jsonc`, and
+  Workers Builds runs it on every push — so dashboard-set vars last until the
+  next build. Put them in `vars` in `wrangler.jsonc`. **Secrets are the
+  exception**: an encrypted variable is never deleted, so `GITHUB_CLIENT_SECRET`
+  and `RESEND_API_KEY` belong in the dashboard and must not go in the config.
 - **`astro check` does not cover `worker/`.** It only looks at `src/`, so the
   Worker's logic is tested by `npm test` instead. A syntax error there breaks
-  CMS sign-in *and* the enquiry form together, since they share one entry point.
-- **The enquiry form degrades rather than failing.** No `RESEND_API_KEY` yet, a
+  CMS sign-in *and* the contact form together, since they share one entry point.
+- **The contact form degrades rather than failing.** No `RESEND_API_KEY` yet, a
   5xx, a network error — the page falls back to a prefilled `mailto` so the
   lead still arrives. This is what makes it safe to ship ahead of `docs/SETUP.md`
   step 6.

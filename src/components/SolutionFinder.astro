@@ -93,9 +93,6 @@ const timelines = [
 
       <div class="field--wide finder__actions">
         <button class="button" type="submit">Send</button>
-        <p class="finder__fallback muted">
-          Prefer email? <a href={`mailto:${site.email}`}>{site.email}</a>
-        </p>
       </div>
 
       <p class="finder__status field--wide" id="solution-status" role="status" aria-live="polite"></p>
@@ -232,11 +229,6 @@ const timelines = [
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-md);
-  }
-
-  .finder__fallback {
-    margin: 0;
-    font-size: var(--step--1);
   }
 
   /* Visually hidden rather than display:none -- some bots skip anything the
