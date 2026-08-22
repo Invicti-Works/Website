@@ -77,22 +77,32 @@ itself, so there are no deployment secrets to manage or rotate.
 
 ---
 
-## 4. Attach the real domain
+## 4. The domain
 
-1. Open the Worker → **Settings → Domains & Routes → Add → Custom domain**.
-2. Add `invicti.works`. Repeat for `www.invicti.works`.
-3. Cloudflare creates the DNS records and issues the TLS certificate for you.
+**Already done, in code.** `invicti.works` and `www.invicti.works` are declared
+as custom domains in `wrangler.jsonc`:
 
-Then update two files in this repository so links, the sitemap and the RSS feed
-point at the real domain instead of the placeholder:
+```jsonc
+"routes": [
+  { "pattern": "invicti.works", "custom_domain": true },
+  { "pattern": "www.invicti.works", "custom_domain": true }
+]
+```
 
-- `src/data/site.json` → `"url": "https://invicti.works"`
-- `public/admin/config.yml` → `site_url: https://invicti.works`
+Cloudflare creates the DNS records and issues the TLS certificates on deploy, so
+there is no dashboard step and the live hostnames stay in version control.
 
-(You can also change `url` from inside the CMS once step 5 is done — it is the
-**Site URL** field under *Site settings*.)
+`custom_domain` is the right mode here rather than a plain route, because the
+Worker *is* the origin — there is no server behind it. Both hostnames serve the
+same site, and the canonical URL emitted by `src/components/Seo.astro` points at
+the apex, so search engines are not offered two copies of every page.
 
----
+**If a deploy fails on this**, it is almost always because the hostname already
+has a CNAME record — Cloudflare will not create a custom domain over one. Delete
+the stale record under **DNS → Records** and the next deploy will succeed.
+
+To change the domain later, edit the `routes` array and merge; do not add it
+through the dashboard, or the two will drift.
 
 ## 5. Set up CMS sign-in
 
