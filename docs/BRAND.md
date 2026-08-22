@@ -56,8 +56,16 @@ re-optimised — the header lockup is 52 KB rather than 1.1 MB.
 ### Regenerating them
 
 They are committed, so a normal build does not touch them. Regenerate only if
-the artwork changes: the derivation is recorded in this table and in the
-project history. The header swaps colour and white versions with a `<picture>`
+the artwork in `brand/` changes:
+
+```bash
+pip install Pillow numpy
+python3 scripts/derive-brand-assets.py
+```
+
+That script is the single source of truth for the derivation — the trimming
+threshold, the resampling, the iOS navy backfill and the social-card
+composition all live there rather than in anyone's memory. The header swaps colour and white versions with a `<picture>`
 element and `prefers-color-scheme`, so no JavaScript and no flash of the wrong
 logo.
 
