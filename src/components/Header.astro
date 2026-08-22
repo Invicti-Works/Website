@@ -1,14 +1,11 @@
 ---
 import Logo from './Logo.astro';
 
-const links = [
-  { href: '/products', label: 'Products' },
-  { href: '/about', label: 'About' },
-  { href: '/news', label: 'News' },
-  { href: '/contact', label: 'Contact' },
-];
+// The site is the home page and /contact, so the only nav item is the call to
+// action. Add entries here if more pages appear.
+const links: { href: string; label: string }[] = [];
 
-// Normalise so `/about` and `/about/` both mark the same link current.
+// Normalise so `/contact` and `/contact/` both mark the same link current.
 const current = Astro.url.pathname.replace(/\/+$/, '') || '/';
 const isCurrent = (href: string) => current === href || current.startsWith(`${href}/`);
 ---

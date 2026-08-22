@@ -1,140 +1,36 @@
 ---
 import PageLayout from '../layouts/PageLayout.astro';
 import site from '../data/site.json';
-
-const addressLines = [
-  site.address.street,
-  [site.address.city, site.address.region].filter(Boolean).join(', '),
-  site.address.postalCode,
-].filter(Boolean);
-
-// Prefilled subject lines make an emailed enquiry as low-friction as a form,
-// and route themselves without any backend.
-const enquiries = [
-  {
-    title: 'Product demo',
-    body: 'See one of our applications in action and work out whether it fits.',
-    subject: 'Demo request',
-  },
-  {
-    title: 'New project',
-    body: 'You have something to build and want to talk through scope and approach.',
-    subject: 'New project enquiry',
-  },
-  {
-    title: 'Partnership',
-    body: 'Reseller, integration or referral conversations.',
-    subject: 'Partnership enquiry',
-  },
-];
 ---
 
 <PageLayout
   title="Contact"
-  summary="Tell us what you are trying to build or buy, and we will come back to you."
+  summary="Tell us what you are trying to build, and we will come back to you."
 >
-  <div class="stack">
-    <ul class="grid" role="list">
-      {
-        enquiries.map((item) => (
-          <li>
-            <div class="card">
-              <h2>{item.title}</h2>
-              <p class="muted">{item.body}</p>
-              <p class="card__cta">
-                <a
-                  class="button"
-                  href={`mailto:${site.email}?subject=${encodeURIComponent(item.subject)}`}
-                >
-                  Email us
-                  <span class="visually-hidden"> about {item.title.toLowerCase()}</span>
-                </a>
-              </p>
-            </div>
-          </li>
-        ))
-      }
-    </ul>
+  <div class="prose">
+    <p>
+      Email is the fastest way to reach us. A sentence or two about what you have
+      in mind is enough — we will come back with an honest read on scope and
+      approach.
+    </p>
 
-    <div class="prose">
-      <h2>Direct</h2>
-      <dl class="contact">
-        <div>
-          <dt>Email</dt>
-          <dd><a href={`mailto:${site.email}`}>{site.email}</a></dd>
-        </div>
-        {
-          site.phone && (
-            <div>
-              <dt>Phone</dt>
-              <dd><a href={`tel:${site.phone.replace(/[^+\d]/g, '')}`}>{site.phone}</a></dd>
-            </div>
-          )
-        }
-        {
-          addressLines.length > 0 && (
-            <div>
-              <dt>Address</dt>
-              <dd>
-                <address>
-                  {addressLines.map((line) => (
-                    <span class="contact__line">{line}</span>
-                  ))}
-                </address>
-              </dd>
-            </div>
-          )
-        }
-      </dl>
+    <p class="contact__cta">
+      <a class="button" href={`mailto:${site.email}?subject=${encodeURIComponent('Enquiry')}`}>
+        Email {site.email}
+      </a>
+    </p>
 
-      {/*
-        NOTE: this is a fully static site, so there is no server to accept a
-        form post. Adding a real enquiry form needs a decision first -- see
-        docs/SETUP.md, "Contact and lead-capture forms". Until then these
-        mailto links always work and cannot silently drop a lead.
-      */}
-    </div>
+    {/*
+      NOTE: this is a fully static site, so there is no server to accept a form
+      post. A real enquiry form needs a decision first -- see docs/SETUP.md,
+      "Contact and lead-capture forms". Until then this mailto always works and
+      cannot silently drop a lead.
+    */}
   </div>
 </PageLayout>
 
 <style>
-  .grid {
-    list-style: none;
-    padding: 0;
-  }
-
-  .card__cta {
-    margin-block-start: auto;
-    padding-block-start: var(--space-md);
-  }
-
-  .card h2 {
-    font-size: var(--step-1);
-  }
-
-  .contact {
-    display: grid;
-    gap: var(--space-md);
-  }
-
-  .contact dt {
-    font-weight: 700;
-    font-size: var(--step--1);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--color-text-muted);
-  }
-
-  .contact dd {
-    margin: 0;
-    font-size: var(--step-1);
-  }
-
-  .contact address {
-    font-style: normal;
-  }
-
-  .contact__line {
-    display: block;
+  .contact__cta {
+    margin-block-start: var(--space-lg);
   }
 </style>

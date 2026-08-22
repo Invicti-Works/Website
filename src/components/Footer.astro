@@ -10,6 +10,9 @@ const socialLinks = Object.entries(site.social).filter(([, url]) => Boolean(url)
 
 const labels: Record<string, string> = {
   linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  pinterest: 'Pinterest',
   github: 'GitHub',
   x: 'X',
   youtube: 'YouTube',
@@ -26,9 +29,7 @@ const labels: Record<string, string> = {
     <nav aria-label="Footer">
       <h2 class="eyebrow">Company</h2>
       <ul class="site-footer__list">
-        <li><a href="/products">Products</a></li>
-        <li><a href="/about">About</a></li>
-        <li><a href="/news">News</a></li>
+        <li><a href="/">Home</a></li>
         <li><a href="/contact">Contact</a></li>
       </ul>
     </nav>
@@ -67,7 +68,6 @@ const labels: Record<string, string> = {
 
   <div class="container site-footer__legal">
     <p>&copy; {year} {site.name}. All rights reserved.</p>
-    <p><a href="/rss.xml">RSS feed</a></p>
   </div>
 </footer>
 
