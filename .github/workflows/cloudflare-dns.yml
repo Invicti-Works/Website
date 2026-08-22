@@ -1,0 +1,155 @@
+name: Cloudflare DNS
+
+# Manual only. Lets the Cloudflare API be driven from GitHub, where the token
+# lives as a repository secret, without the token ever leaving GitHub.
+#
+# Why this exists: Claude Code sessions cannot reach api.cloudflare.com (the
+# sandbox egress policy blocks it) and cannot read repository secrets. A
+# workflow can do both, so DNS work happens here instead.
+#
+# The secret must be named CLOUDFLARE_API_TOKEN. If yours has a different
+# name, change the two `secrets.` references below -- GitHub does not allow
+# looking a secret up by a dynamic name.
+#
+# Token needs, scoped to the invicti.works zone only:
+#   Zone -> Zone -> Read      (to resolve the zone ID)
+#   Zone -> DNS  -> Edit      (to list and delete records)
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "inspect = list records only. delete-stale = remove the A/AAAA/CNAME records blocking the custom domain."
+        required: true
+        type: choice
+        default: inspect
+        options: [inspect, delete-stale]
+      confirm:
+        description: "Type DELETE to confirm. Ignored unless mode is delete-stale."
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  ZONE: invicti.works
+
+jobs:
+  dns:
+    name: ${{ inputs.mode }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check the token is present
+        run: |
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN is not set on this repository."
+            echo "Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+      - name: Resolve zone
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          resp=$(curl -sS -H "Authorization: Bearer $CF_TOKEN" \
+            "https://api.cloudflare.com/client/v4/zones?name=$ZONE")
+
+          if [ "$(echo "$resp" | jq -r '.success')" != "true" ]; then
+            echo "::error::Cloudflare rejected the request. Check the token's scopes."
+            # Print only error codes and messages -- never the raw response.
+            echo "$resp" | jq -r '.errors[]? | "  \(.code): \(.message)"'
+            exit 1
+          fi
+
+          id=$(echo "$resp" | jq -r '.result[0].id // empty')
+          if [ -z "$id" ]; then
+            echo "::error::Zone $ZONE not found, or the token cannot see it."
+            exit 1
+          fi
+          echo "ZONE_ID=$id" >> "$GITHUB_ENV"
+          echo "Zone $ZONE resolved."
+
+      - name: List DNS records
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          curl -sS -H "Authorization: Bearer $CF_TOKEN" \
+            "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records?per_page=200" \
+            > records.json
+
+          echo "### DNS records for $ZONE" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Type | Name | Content | Proxied | Blocks custom domain |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- | --- | --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+
+          jq -r --arg zone "$ZONE" '
+            .result[]
+            | . as $r
+            | (if (["A","AAAA","CNAME"] | index($r.type))
+                  and ($r.name == $zone or $r.name == "www." + $zone)
+               then "**YES**" else "no" end) as $blocks
+            | "| \($r.type) | \($r.name) | \($r.content) | \($r.proxied) | \($blocks) |"
+          ' records.json >> "$GITHUB_STEP_SUMMARY"
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "MX, TXT, NS and other types are never touched by this workflow." >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
+
+      - name: Delete the blocking records
+        if: inputs.mode == 'delete-stale'
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ inputs.confirm }}" != "DELETE" ]; then
+            echo "::error::Refusing to delete. Re-run with confirm set to DELETE."
+            exit 1
+          fi
+
+          # Only A/AAAA/CNAME, and only on the apex and www.
+          #
+          # The type filter spares MX and TXT, which carry this domain's
+          # Microsoft 365 mail routing and SPF: deleting those would break
+          # email to info@invicti.works.
+          #
+          # The name filter matters just as much. The zone also holds records
+          # like blog.invicti.works and _acme-challenge.invicti.works, and a
+          # filter on type alone would take out certificate validation and any
+          # subdomain along with the two hostnames we actually want cleared.
+          #
+          # Both filters were tested against a fixture covering exactly those
+          # cases before this workflow was committed.
+          jq -r --arg zone "$ZONE" '
+            .result[]
+            | select(.type | IN("A","AAAA","CNAME"))
+            | select(.name == $zone or .name == "www." + $zone)
+            | "\(.id)\t\(.type)\t\(.name)"
+          ' records.json > doomed.tsv
+
+          count=$(wc -l < doomed.tsv | tr -d " ")
+          if [ "$count" = "0" ]; then
+            echo "Nothing to delete: no A/AAAA/CNAME on the apex or www."
+            exit 0
+          fi
+
+          echo "Deleting $count record(s):"
+          while IFS=$'\t' read -r id type name; do
+            [ -z "$id" ] && continue
+            echo "  $type $name"
+            out=$(curl -sS -X DELETE -H "Authorization: Bearer $CF_TOKEN" \
+              "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/dns_records/$id")
+            if [ "$(echo "$out" | jq -r '.success')" != "true" ]; then
+              echo "::error::Failed to delete $type $name"
+              echo "$out" | jq -r '.errors[]? | "  \(.code): \(.message)"'
+              exit 1
+            fi
+          done < doomed.tsv
+
+          echo "Done. Next: uncomment the routes block in wrangler.jsonc and merge."

@@ -127,12 +127,26 @@ hidden:
 
 ### Finishing the job
 
-1. Cloudflare → **DNS → Records**.
-2. Delete the `A` and `AAAA` records on `invicti.works` and `www` per the table.
-3. Uncomment the `routes` block in `wrangler.jsonc` (it is left in the file with
+Either do it by hand in **DNS → Records**, deleting the `A` and `AAAA` entries
+on `invicti.works` and `www` per the table above — or run the workflow, which
+does the same thing with the filters written down rather than remembered:
+
+1. GitHub → **Actions → Cloudflare DNS → Run workflow**.
+2. Run with `mode: inspect` first. It lists every record and marks which ones
+   block the custom domain. Nothing is changed.
+3. If that looks right, run again with `mode: delete-stale` and
+   `confirm: DELETE`. It removes only `A`, `AAAA` and `CNAME` records on the
+   apex and `www` — never `MX`, `TXT` or `NS`, and never another subdomain.
+4. Uncomment the `routes` block in `wrangler.jsonc` (it is left in the file with
    the exact lines to restore) and merge.
-4. The next deploy creates the custom domains, issues the certificates and
+5. The next deploy creates the custom domains, issues the certificates and
    writes the DNS records itself.
+
+The workflow reads `CLOUDFLARE_API_TOKEN` from **Settings → Secrets and
+variables → Actions**. The token needs, scoped to this zone only:
+Zone → Zone → Read, and Zone → DNS → Edit. If your secret has a different
+name, change the `secrets.` references in the workflow — GitHub cannot look a
+secret up by a dynamic name.
 
 Until then the site is reachable at `https://websitebuild.<subdomain>.workers.dev`
 — `workers_dev` and `preview_urls` are both enabled in `wrangler.jsonc` so
