@@ -7,23 +7,24 @@ import { getProducts, getNews, formatDate } from '../lib/content';
 const products = (await getProducts()).slice(0, 3);
 const news = (await getNews()).slice(0, 2);
 
-// Placeholder positioning. Replace the copy, keep the structure.
+// Edit these four in place, or move them into the CMS if they start changing
+// often. They are deliberately capability-level, not a service menu.
 const capabilities = [
   {
-    title: 'PLACEHOLDER — Product strategy',
-    body: 'One or two sentences on how you take an idea to a shippable product.',
+    title: 'Product strategy',
+    body: 'Turning an idea into something buildable: what it has to do, who it is for, and what to leave out of version one.',
   },
   {
-    title: 'PLACEHOLDER — SaaS platforms',
-    body: 'What you build on the web side, and what makes it different.',
+    title: 'Mobile applications',
+    body: 'Apps for iOS and Android, from the first build through App Store and Google Play review to the release itself.',
   },
   {
-    title: 'PLACEHOLDER — Mobile applications',
-    body: 'iOS and Android work, and how it connects to the platform side.',
+    title: 'Platforms and APIs',
+    body: 'The web application and services a mobile product leans on — accounts, data, integrations and the admin side nobody sees.',
   },
   {
-    title: 'PLACEHOLDER — Go to market',
-    body: 'How you help a product find its buyers once it exists.',
+    title: 'Launch and beyond',
+    body: 'Releases, monitoring, updates, and the changes that only become obvious once real people are using the thing.',
   },
 ];
 ---
@@ -48,8 +49,8 @@ const capabilities = [
           <div class="section-head">
             <h2 id="products-heading">Our products</h2>
             <p class="muted">
-              Applications we build, ship and support. Each one has its own page with
-              features, platforms and pricing.
+              What we build, and how we go about it. Each one has its own page with the
+              detail behind it.
             </p>
           </div>
           <ul class="grid" role="list">
@@ -71,7 +72,10 @@ const capabilities = [
     <div class="container">
       <div class="section-head">
         <h2 id="capabilities-heading">What we do</h2>
-        <p class="muted">PLACEHOLDER — one line framing the four areas below.</p>
+        <p class="muted">
+            Four things, and they tend to come as a set. Most of our work runs from the
+            first sketch through to the versions that come after launch.
+          </p>
       </div>
       <ul class="grid" role="list">
         {
@@ -120,10 +124,11 @@ const capabilities = [
 
   <section class="band section" aria-labelledby="cta-heading">
     <div class="container closing">
-      <h2 id="cta-heading">PLACEHOLDER — closing call to action</h2>
+      <h2 id="cta-heading">Tell us what you are building</h2>
       <p>
-        One or two sentences telling a prospect exactly what happens when they get in
-        touch, and how quickly.
+        A sentence or two about the product you have in mind is enough to start. We will
+        come back with an honest read on scope and approach — including when the answer
+        is that you do not need us yet.
       </p>
       <div class="cta-row">
         <a class="button" href="/contact">Start a conversation</a>

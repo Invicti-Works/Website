@@ -182,6 +182,13 @@ collections:
       - { name: name, label: Name, widget: string }
       - { name: role, label: Role, widget: string }
       - { name: summary, label: One-line summary, widget: string }
+      - name: image
+        label: Headshot
+        widget: image
+        required: false
+        hint: >-
+          Square photo. No alt text needed -- the name is shown right next to it,
+          so the image is marked decorative for screen readers.
       - name: order
         label: Sort order
         widget: number

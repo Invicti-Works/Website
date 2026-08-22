@@ -2,6 +2,7 @@
 name: Erica Gaffney
 role: Co-founder
 summary: Nonprofit development and operations, and the systems organizations actually run on.
+image: /team/erica-gaffney.jpg
 order: 10
 links:
   linkedin: ''

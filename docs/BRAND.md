@@ -53,6 +53,26 @@ serves was derived from them once and committed to `public/`:
 Each was trimmed of its transparent margin, resized with Lanczos resampling and
 re-optimised — the header lockup is 52 KB rather than 1.1 MB.
 
+## Founder headshots
+
+| Web asset | Derived from |
+| --- | --- |
+| `public/team/erica-gaffney.jpg` | `brand/photos/erica-gaffney.jpeg` |
+| `public/team/josh-forman.jpg` | `brand/photos/josh-forman.jpeg` |
+
+Centre-cropped square and resized to 320px — enough for the 120px avatar at 2x
+DPR without upscaling the originals. Same script as the logo assets.
+
+To add someone: drop a square-ish photo in `brand/photos/<slug>.jpeg`, add the
+slug to `PHOTOS` in the script, run it, and set `image: /team/<slug>.jpg` in
+their file under `src/content/team/`.
+
+**No alt text.** The card renders the person's name immediately beside the
+photo, so alt text would make a screen reader announce the name twice. The image
+is marked decorative (`alt=""`), which is the correct treatment when adjacent
+text already identifies the subject. This is the one place the site's
+alt-text-required rule is deliberately not applied.
+
 ### Regenerating them
 
 They are committed, so a normal build does not touch them. Regenerate only if
