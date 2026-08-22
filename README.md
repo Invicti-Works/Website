@@ -10,11 +10,6 @@ applications. Built with [Astro](https://astro.build), edited through
 - **Setting up hosting, the CMS login and Access?** → [`docs/SETUP.md`](docs/SETUP.md)
 - **Colours and logo?** → [`docs/BRAND.md`](docs/BRAND.md)
 
-> **Placeholder copy.** Every string marked `PLACEHOLDER` is a stand-in and must
-> be replaced before launch — the tagline, the company description, both founder
-> bios and the two example products. The logo artwork and brand colours are
-> real.
-
 ## Adding a product
 
 The site is built around this. Add a Markdown file to `src/content/products/`
@@ -91,10 +86,11 @@ wrangler.jsonc      Cloudflare deployment config
   `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`) run it, so
   ordinary traffic stays on the free unmetered asset tier. The Worker exists
   solely to sign CMS editors in — see `worker/index.js`.
-- **Custom domains are commented out in `wrangler.jsonc`.** Cloudflare refused to
-  create them over pre-existing DNS records, and that failure took the whole
-  deploy down with it. Restore the block after clearing DNS — `docs/SETUP.md`
-  step 4 has the exact error and procedure.
+- **The custom domains in `wrangler.jsonc` are ordering-sensitive.** Cloudflare
+  will not create one over a pre-existing DNS record, and that failure fails the
+  *whole* deploy — it once left the site serving stale content for hours. The
+  stale apex and `www` records must be cleared before the `routes` block reaches
+  `main`. `docs/SETUP.md` step 4 has the error and the procedure.
 - **`not_found_handling` is `404-page`, not `single-page-application`.** This is a
   content site; SPA handling returns HTTP 200 for every bad URL and leaks
   soft-404s into the search index.
