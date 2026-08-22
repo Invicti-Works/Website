@@ -1,9 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
 
-  // Worker name. This becomes <name>.<your-subdomain>.workers.dev until you
-  // attach the real domain in the Cloudflare dashboard.
-  "name": "invicti-works-website",
+  // Worker name. MUST match the Worker service in the Cloudflare dashboard --
+  // Workers Builds runs `wrangler deploy`, which targets this name, and a
+  // mismatch fails the build.
+  "name": "website",
   "compatibility_date": "2026-08-22",
 
   // Static-assets-only Worker: there is no "main" entrypoint and no "binding",
