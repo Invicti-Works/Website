@@ -79,10 +79,11 @@ itself, so there are no deployment secrets to manage or rotate.
 
 ## 4. The domain
 
-**Blocked on one manual step, and it is blocking deploys too.**
+**Blocked on one manual step: deleting two stale DNS records.** Everything else
+is done and waiting on it.
 
-`invicti.works` and `www.invicti.works` were declared as custom domains in
-`wrangler.jsonc`. The deploy failed:
+`invicti.works` and `www.invicti.works` are declared as custom domains in
+`wrangler.jsonc`. The first attempt to deploy them failed:
 
 ```
 Hostname 'invicti.works' already has externally managed DNS records
@@ -92,8 +93,9 @@ No targets deployed for websitebuild
 
 Cloudflare will not create a custom domain on a hostname that already has DNS
 records. Worse, because the trigger update failed, **the whole deploy failed**
-— so the site content stopped updating too. The `routes` block has been
-commented out of `wrangler.jsonc` to get deploys working again.
+— so the site content stopped updating too, and the fix at the time was to
+comment the block out. It is back in the file now, on a branch, so that the
+records get cleared first and the block lands second.
 
 ### What is actually on the domain
 
@@ -127,9 +129,24 @@ hidden:
 
 ### Finishing the job
 
-Either do it by hand in **DNS → Records**, deleting the `A` and `AAAA` entries
-on `invicti.works` and `www` per the table above — or run the workflow, which
-does the same thing with the filters written down rather than remembered:
+**The `routes` block is already restored in `wrangler.jsonc`.** It is waiting on
+a branch, not on an edit — so the remaining work is: clear the records, then
+merge. Merging before the records are cleared re-breaks deploys, which is the
+one thing to get right here.
+
+Clear them **either** by hand **or** with the workflow. Both do the same thing;
+the workflow just has the filters written down rather than remembered.
+
+**By hand.** **DNS → Records**, delete the `A` and `AAAA` entries on
+`invicti.works` and `www` per the table above. Nothing else. Roughly a minute,
+and it needs no token.
+
+**With the workflow.** It needs a `CLOUDFLARE_API_TOKEN` repository secret,
+which is **not set today** — the first run failed on exactly that. Add it under
+**Settings → Secrets and variables → Actions**, with the token scoped to this
+zone only: Zone → Zone → Read, and Zone → DNS → Edit. If your secret has a
+different name, change the `secrets.` references in the workflow — GitHub
+cannot look a secret up by a dynamic name. Then:
 
 1. GitHub → **Actions → Cloudflare DNS → Run workflow**.
 2. Run with `mode: inspect` first. It lists every record and marks which ones
@@ -137,16 +154,14 @@ does the same thing with the filters written down rather than remembered:
 3. If that looks right, run again with `mode: delete-stale` and
    `confirm: DELETE`. It removes only `A`, `AAAA` and `CNAME` records on the
    apex and `www` — never `MX`, `TXT` or `NS`, and never another subdomain.
-4. Uncomment the `routes` block in `wrangler.jsonc` (it is left in the file with
-   the exact lines to restore) and merge.
-5. The next deploy creates the custom domains, issues the certificates and
-   writes the DNS records itself.
 
-The workflow reads `CLOUDFLARE_API_TOKEN` from **Settings → Secrets and
-variables → Actions**. The token needs, scoped to this zone only:
-Zone → Zone → Read, and Zone → DNS → Edit. If your secret has a different
-name, change the `secrets.` references in the workflow — GitHub cannot look a
-secret up by a dynamic name.
+**Then, either way:** merge the pull request carrying the `routes` block. The
+deploy that runs on `main` creates the custom domains, issues the certificates
+and writes the DNS records itself.
+
+> Only a push to `main` applies the routes. Branch builds run
+> `wrangler versions upload`, which uploads a version without touching routes —
+> so the change sits safely on a branch until you merge it.
 
 Until then the site is reachable at `https://websitebuild.<subdomain>.workers.dev`
 — `workers_dev` and `preview_urls` are both enabled in `wrangler.jsonc` so

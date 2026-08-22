@@ -31,21 +31,30 @@
   "workers_dev": true,
   "preview_urls": true,
 
-  // NOTE: custom domains are deliberately NOT configured here yet.
+  // The live hostnames. Cloudflare creates the DNS records and issues the TLS
+  // certificates on deploy, so the domain is attached from version control
+  // rather than by hand in the dashboard.
   //
-  // A previous deploy failed with:
+  // `custom_domain` rather than a plain route, because the Worker *is* the
+  // origin -- there is no server behind it. A plain route would additionally
+  // need a proxied DNS record to already exist.
+  //
+  // ORDERING MATTERS. Cloudflare refuses to create a custom domain over a
+  // pre-existing DNS record, and a failed trigger update fails the entire
+  // deploy -- which is how the site once stopped updating altogether:
+  //
   //   Hostname 'invicti.works' already has externally managed DNS records
   //   (A, CNAME, etc). Delete them first or try a different hostname. [100117]
+  //   No targets deployed for websitebuild
   //
-  // Cloudflare will not create a custom domain over pre-existing DNS records,
-  // and because the trigger update failed, the whole deploy failed with it --
-  // taking the site content down with it. Re-add the block below only after
-  // the stale records for the apex and www are deleted in DNS -> Records:
-  //
-  //   "routes": [
-  //     { "pattern": "invicti.works", "custom_domain": true },
-  //     { "pattern": "www.invicti.works", "custom_domain": true }
-  //   ],
+  // So the stale A/AAAA records on the apex and www must be gone *before* this
+  // block reaches `main`. docs/SETUP.md step 4 has the procedure. Only a push
+  // to `main` runs `wrangler deploy` and applies these; branch builds run
+  // `wrangler versions upload`, which does not touch routes.
+  "routes": [
+    { "pattern": "invicti.works", "custom_domain": true },
+    { "pattern": "www.invicti.works", "custom_domain": true }
+  ],
 
   "observability": {
     "enabled": true
