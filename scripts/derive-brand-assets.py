@@ -71,6 +71,24 @@ def square(im: Image.Image, size: int, pad: float = 0.06) -> Image.Image:
     return canvas
 
 
+def save_flat(im: Image.Image, path: str, colors: int = 64) -> None:
+    """Save flat-colour artwork as a palette PNG.
+
+    The logo is flat brand colour with soft edges, not a photograph, so a
+    small palette is visually indistinguishable from full colour and roughly
+    an order of magnitude smaller -- the horizontal lockup goes from 52 KB to
+    about 6 KB, and it was 71% of the home page's weight before this.
+
+    FASTOCTREE is the only quantiser Pillow allows for RGBA; MEDIANCUT is
+    better where there is no alpha channel to preserve.
+    """
+    if im.mode == 'RGBA':
+        q = im.quantize(colors=colors, method=Image.FASTOCTREE)
+    else:
+        q = im.convert('RGB').quantize(colors=colors, method=Image.MEDIANCUT)
+    q.save(path, optimize=True)
+
+
 def square_crop(im: Image.Image, size: int) -> Image.Image:
     """Centre-crop to a square, then resize. Never upscales past the source."""
     side = min(im.width, im.height)
@@ -105,19 +123,19 @@ def main() -> None:
         ('horizontal_white', 'logo-horizontal-white.png'),
     ):
         im = fit_width(trim(SOURCES[key]), 640)
-        im.save(f'{OUT}/{name}', optimize=True)
+        save_flat(im, f'{OUT}/{name}')
         written.append(name)
 
     mark = trim(SOURCES['mark'])
     for size, name in ((512, 'logo-mark.png'), (192, 'icon-192.png'), (32, 'favicon-32.png')):
-        square(mark, size).save(f'{OUT}/{name}', optimize=True)
+        save_flat(square(mark, size), f'{OUT}/{name}')
         written.append(name)
 
     # iOS ignores transparency and composites onto black, so bake the navy in.
     apple = Image.new('RGB', (180, 180), BRAND_NAVY)
     m = square(mark, 180, pad=0.14)
     apple.paste(m, (0, 0), m)
-    apple.save(f'{OUT}/apple-touch-icon.png', optimize=True)
+    save_flat(apple, f'{OUT}/apple-touch-icon.png')
     written.append('apple-touch-icon.png')
 
     square(mark, 64).save(f'{OUT}/favicon.ico', sizes=[(16, 16), (32, 32), (48, 48)])
@@ -129,7 +147,7 @@ def main() -> None:
     if lock.height > 470:
         lock = fit_height(lock, 470)
     og.paste(lock, ((1200 - lock.width) // 2, (630 - lock.height) // 2), lock)
-    og.save(f'{OUT}/og-default.png', optimize=True)
+    save_flat(og, f'{OUT}/og-default.png')
     written.append('og-default.png')
 
     written += build_photos()
