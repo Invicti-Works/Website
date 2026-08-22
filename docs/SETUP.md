@@ -79,11 +79,63 @@ itself, so there are no deployment secrets to manage or rotate.
 
 ## 4. The domain
 
-**Blocked on one manual step: deleting two stale DNS records.** Everything else
-is done and waiting on it.
+**Done.** `invicti.works` and `www.invicti.works` are declared as custom domains
+in `wrangler.jsonc`, and the DNS records that were blocking them have been
+deleted. Kept here as the record of what was removed and why.
 
-`invicti.works` and `www.invicti.works` are declared as custom domains in
-`wrangler.jsonc`. The first attempt to deploy them failed:
+### What was actually on the domain
+
+The earlier version of this table was wrong in three ways, and the way it was
+wrong is worth keeping. It was written from **public DNS**, which cannot see
+past a proxied record: every answer is a Cloudflare edge address, so the table
+listed edge IPs as though they were the real targets, and inferred `AAAA`
+records that did not exist. The authoritative list came from the zone itself, on
+22 Aug 2026:
+
+| Type | Name | Content | Action |
+| --- | --- | --- | --- |
+| `A` | `invicti.works` | `13.248.243.5` | **Deleted** |
+| `A` | `invicti.works` | `76.223.105.230` | **Deleted** |
+| `CNAME` | `www.invicti.works` | `invicti.works` | **Deleted** |
+| `MX` ×3 | `invicti.works` | `mx1/mx2/mx3-usg2.ppe-hosted.com` | Kept |
+| `TXT` | `invicti.works` | SPF, and the `NETORGFT…onmicrosoft.com` verification | Kept |
+| `TXT` | `_dmarc` | `v=DMARC1; p=quarantine; …` | Kept |
+| `CNAME` | `selector1/2._domainkey` | Microsoft DKIM | Kept |
+| `CNAME` | `autodiscover`, `sip`, `lyncdiscover`, `msoid` | Microsoft 365 | Kept |
+| `SRV` ×2 | `_sip._tls`, `_sipfederationtls._tcp` | Microsoft 365 | Kept |
+| `CNAME` | `email`, `pay`, `_domainconnect` | GoDaddy | Kept |
+
+Corrections against the old table: there were **no `AAAA` records at all**;
+`www` was a **`CNAME` to the apex**, not `A`/`AAAA`; and the apex pointed at
+`13.248.243.5` / `76.223.105.230` — GoDaddy website-builder addresses, not the
+Cloudflare edge IPs the old table named. So the page previously served at
+`invicti.works` was a GoDaddy builder site. If a GoDaddy plan is still being
+billed for it, it is no longer serving anything.
+
+> **Only three records blocked the custom domain**, and only `A`, `AAAA` and
+> `CNAME` on the apex and `www` ever could. Everything else above is mail and
+> subdomain infrastructure — deleting the `MX`, `TXT`, `SRV` or DKIM records
+> would break email to `info@invicti.works`, the contact address published on
+> this site.
+
+### If it ever has to be done again
+
+Run **Actions → Cloudflare DNS → Run workflow** with `mode: inspect` first; it
+lists every record and marks which ones block the custom domain, changing
+nothing. Then run `mode: delete-stale` with `confirm: DELETE`. It removes only
+`A`, `AAAA` and `CNAME` on the apex and `www` — never `MX`, `TXT`, `SRV` or
+`NS`, and never another subdomain.
+
+The workflow reads `CLOUDFLARE_API_TOKEN` from **Settings → Secrets and
+variables → Actions**, scoped to this zone only: Zone → Zone → Read, and
+Zone → DNS → Edit. Doing it by hand in **DNS → Records** works just as well and
+needs no token.
+
+### Get the ordering right
+
+This is the part that bites. Cloudflare will not create a custom domain over a
+pre-existing DNS record, and because the failure is in the *trigger* update, it
+fails the **entire** deploy — the site stops updating, not just the domain:
 
 ```
 Hostname 'invicti.works' already has externally managed DNS records
@@ -91,81 +143,18 @@ Hostname 'invicti.works' already has externally managed DNS records
 No targets deployed for websitebuild
 ```
 
-Cloudflare will not create a custom domain on a hostname that already has DNS
-records. Worse, because the trigger update failed, **the whole deploy failed**
-— so the site content stopped updating too, and the fix at the time was to
-comment the block out. It is back in the file now, on a branch, so that the
-records get cleared first and the block lands second.
+So: **delete the records first, then land the `routes` block.** It happened in
+the other order here — #9 merged at 19:50 and the records went at 19:54 — and
+that deploy uploaded the Worker but attached no domain, needing a re-run once
+the zone was clear.
 
-### What is actually on the domain
+> Only a push to `main` applies routes. Branch builds run
+> `wrangler versions upload`, which uploads a version without touching them, so
+> the change sits safely on a branch until it is merged.
 
-Queried against public DNS on 22 Aug 2026:
-
-| Name | Type | Value | Action |
-| --- | --- | --- | --- |
-| `invicti.works` | `A` | `172.67.216.24`, `104.21.53.178` | **Delete** |
-| `invicti.works` | `AAAA` | `2606:4700:3031::6815:35b2`, `2606:4700:3034::ac43:d818` | **Delete** |
-| `www.invicti.works` | `A` | same two addresses | **Delete** |
-| `www.invicti.works` | `AAAA` | same two addresses | **Delete** |
-| `invicti.works` | `MX` | `mx1/mx2/mx3-usg2.ppe-hosted.com` | **KEEP** |
-| `invicti.works` | `TXT` | `NETORGFT21013219.onmicrosoft.com` | **KEEP** |
-| `invicti.works` | `TXT` | `v=spf1 include:_spf-usg2.ppe-hosted.com include:secureserver.net ~all` | **KEEP** |
-
-> **Do not delete the `MX` or `TXT` records.** They route and authenticate mail
-> for the domain — Microsoft 365 behind Proofpoint filtering. Removing them
-> breaks email to `info@invicti.works`, which is the contact address published
-> on this site. They do not block the custom domain; only `A`, `AAAA` and
-> `CNAME` on the apex and `www` do.
-
-Two things the public view cannot tell you, because those `A`/`AAAA` answers are
-Cloudflare edge addresses — the records are proxied, so the real target is
-hidden:
-
-- **What the records actually point at.** The dashboard shows the true value.
-  Expect one or two rows per name, not the four addresses above.
-- **Whether anything is being served there today.** If a site or landing page is
-  currently live at `invicti.works`, deleting these replaces it with this one.
-  Check before deleting.
-
-### Finishing the job
-
-**The `routes` block is already restored in `wrangler.jsonc`.** It is waiting on
-a branch, not on an edit — so the remaining work is: clear the records, then
-merge. Merging before the records are cleared re-breaks deploys, which is the
-one thing to get right here.
-
-Clear them **either** by hand **or** with the workflow. Both do the same thing;
-the workflow just has the filters written down rather than remembered.
-
-**By hand.** **DNS → Records**, delete the `A` and `AAAA` entries on
-`invicti.works` and `www` per the table above. Nothing else. Roughly a minute,
-and it needs no token.
-
-**With the workflow.** It needs a `CLOUDFLARE_API_TOKEN` repository secret,
-which is **not set today** — the first run failed on exactly that. Add it under
-**Settings → Secrets and variables → Actions**, with the token scoped to this
-zone only: Zone → Zone → Read, and Zone → DNS → Edit. If your secret has a
-different name, change the `secrets.` references in the workflow — GitHub
-cannot look a secret up by a dynamic name. Then:
-
-1. GitHub → **Actions → Cloudflare DNS → Run workflow**.
-2. Run with `mode: inspect` first. It lists every record and marks which ones
-   block the custom domain. Nothing is changed.
-3. If that looks right, run again with `mode: delete-stale` and
-   `confirm: DELETE`. It removes only `A`, `AAAA` and `CNAME` records on the
-   apex and `www` — never `MX`, `TXT` or `NS`, and never another subdomain.
-
-**Then, either way:** merge the pull request carrying the `routes` block. The
-deploy that runs on `main` creates the custom domains, issues the certificates
-and writes the DNS records itself.
-
-> Only a push to `main` applies the routes. Branch builds run
-> `wrangler versions upload`, which uploads a version without touching routes —
-> so the change sits safely on a branch until you merge it.
-
-Until then the site is reachable at `https://websitebuild.<subdomain>.workers.dev`
-— `workers_dev` and `preview_urls` are both enabled in `wrangler.jsonc` so
-there is always a working URL and per-branch previews.
+The site also stays reachable at `https://websitebuild.erica-936.workers.dev` —
+`workers_dev` and `preview_urls` are both enabled in `wrangler.jsonc`, so there
+is always a working URL and per-branch previews.
 
 ## 5. CMS sign-in
 

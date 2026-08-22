@@ -86,11 +86,12 @@ wrangler.jsonc      Cloudflare deployment config
   `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`) run it, so
   ordinary traffic stays on the free unmetered asset tier. The Worker exists
   solely to sign CMS editors in — see `worker/index.js`.
-- **The custom domains in `wrangler.jsonc` are ordering-sensitive.** Cloudflare
-  will not create one over a pre-existing DNS record, and that failure fails the
-  *whole* deploy — it once left the site serving stale content for hours. The
-  stale apex and `www` records must be cleared before the `routes` block reaches
-  `main`. `docs/SETUP.md` step 4 has the error and the procedure.
+- **Changing the custom domains in `wrangler.jsonc` is ordering-sensitive.**
+  Cloudflare will not create one over a pre-existing DNS record, and because the
+  failure is in the trigger update it fails the *whole* deploy — the site stops
+  updating, not just the domain. Clear the conflicting record **before** the
+  `routes` change reaches `main`. `docs/SETUP.md` step 4 has the error, the
+  workflow that clears records safely, and what the zone actually held.
 - **`not_found_handling` is `404-page`, not `single-page-application`.** This is a
   content site; SPA handling returns HTTP 200 for every bad URL and leaks
   soft-404s into the search index.
