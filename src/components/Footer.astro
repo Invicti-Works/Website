@@ -1,7 +1,11 @@
 ---
 import site from '../data/site.json';
+import { getApps } from '../lib/content';
 
 const year = new Date().getFullYear();
+
+// Matches the conditional route in src/pages/marketplace/[...path].astro.
+const hasApps = (await getApps()).length > 0;
 
 const socialLinks = Object.entries(site.social).filter(([, url]) => Boolean(url)) as [
   string,
@@ -30,6 +34,8 @@ const labels: Record<string, string> = {
       <h2 class="eyebrow">Company</h2>
       <ul class="site-footer__list">
         <li><a href="/">Home</a></li>
+        <li><a href="/#find-your-solution">Find your solution</a></li>
+        {hasApps && <li><a href="/marketplace">Marketplace</a></li>}
         <li><a href="/contact">Contact</a></li>
       </ul>
     </nav>

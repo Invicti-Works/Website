@@ -1,9 +1,17 @@
 ---
 import Logo from './Logo.astro';
+import { getApps } from '../lib/content';
 
-// The site is the home page and /contact, so the only nav item is the call to
-// action. Add entries here if more pages appear.
-const links: { href: string; label: string }[] = [];
+// The marketplace route is only built when the `apps` collection has something
+// in it (see src/pages/marketplace/[...path].astro), so the link has to be
+// conditional on the same thing -- otherwise the nav would 404 until the first
+// app is added.
+const hasApps = (await getApps()).length > 0;
+
+const links = [
+  ...(hasApps ? [{ href: '/marketplace', label: 'Marketplace' }] : []),
+  { href: '/contact', label: 'Contact' },
+];
 
 // Normalise so `/contact` and `/contact/` both mark the same link current.
 const current = Astro.url.pathname.replace(/\/+$/, '') || '/';
@@ -28,7 +36,7 @@ const isCurrent = (href: string) => current === href || current.startsWith(`${hr
           ))
         }
         <li>
-          <a class="button site-header__cta" href="/contact">Talk to us</a>
+          <a class="button site-header__cta" href="/#find-your-solution">Find your solution</a>
         </li>
       </ul>
     </nav>

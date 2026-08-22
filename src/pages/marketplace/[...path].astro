@@ -1,0 +1,167 @@
+---
+import type { GetStaticPaths } from 'astro';
+import PageLayout from '../../layouts/PageLayout.astro';
+import site from '../../data/site.json';
+import { getApps, PLATFORM_LABELS } from '../../lib/content';
+
+/**
+ * The marketplace is not public until there is something to sell.
+ *
+ * A rest parameter that resolves to `undefined` builds exactly `/marketplace`,
+ * and returning no paths at all builds nothing -- no page, no sitemap entry,
+ * no link. So with an empty `apps` collection this route simply does not exist,
+ * and the day the first app is added in the CMS the page publishes itself.
+ *
+ * This is why it is a dynamic route rather than `marketplace.astro`: a static
+ * page file is always emitted, and an empty storefront would be live.
+ */
+export const getStaticPaths = (async () => {
+  const apps = await getApps();
+  return apps.length > 0 ? [{ params: { path: undefined } }] : [];
+}) satisfies GetStaticPaths;
+
+const apps = await getApps();
+---
+
+<PageLayout
+  title="Marketplace"
+  summary="Applications we have built, ready to buy and use."
+>
+  {
+    (
+      <ul class="grid apps" role="list">
+        {apps.map((app) => (
+          <li>
+            <article class="card app">
+              <div class="app__head">
+                <h2>{app.data.title}</h2>
+                {app.data.status === 'coming-soon' && (
+                  <p class="app__badge">Coming soon</p>
+                )}
+              </div>
+              <p class="app__tagline">{app.data.tagline}</p>
+              <p class="muted">{app.data.summary}</p>
+
+              {app.data.platforms.length > 0 && (
+                <ul class="app__platforms" role="list">
+                  {app.data.platforms.map((p) => (
+                    <li>{PLATFORM_LABELS[p] ?? p}</li>
+                  ))}
+                </ul>
+              )}
+
+              {app.data.features.length > 0 && (
+                <ul class="app__features">
+                  {app.data.features.map((f) => (
+                    <li>{f}</li>
+                  ))}
+                </ul>
+              )}
+
+              <div class="app__foot">
+                {app.data.price && <p class="app__price">{app.data.price}</p>}
+                {/*
+                  A Payment Link is just a URL, so there is no Stripe key on
+                  this site and nothing to keep secret. Without one, the card
+                  offers to tell them when it is ready rather than showing a
+                  Buy button that goes nowhere.
+                */}
+                {app.data.stripeUrl ? (
+                  <a class="button" href={app.data.stripeUrl} rel="noopener">
+                    Buy
+                    <span class="visually-hidden"> {app.data.title}</span>
+                  </a>
+                ) : (
+                  <a
+                    class="button button--secondary"
+                    href={`mailto:${site.email}?subject=${encodeURIComponent(`Notify me — ${app.data.title}`)}`}
+                  >
+                    Notify me
+                    <span class="visually-hidden"> when {app.data.title} is available</span>
+                  </a>
+                )}
+              </div>
+            </article>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</PageLayout>
+
+<style>
+  .apps {
+    list-style: none;
+    padding: 0;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .app__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-xs);
+  }
+
+  .app h2 {
+    font-size: var(--step-1);
+  }
+
+  .app__badge {
+    font-size: var(--step--1);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-accent-warm);
+  }
+
+  .app__tagline {
+    margin-block-start: var(--space-2xs);
+    font-weight: 600;
+    color: var(--color-accent);
+  }
+
+  .app__platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2xs);
+    list-style: none;
+    padding: 0;
+    margin-block-start: var(--space-md);
+  }
+
+  .app__platforms li {
+    font-size: var(--step--1);
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    color: var(--color-text-muted);
+  }
+
+  .app__features {
+    margin-block-start: var(--space-md);
+    padding-inline-start: 1.1rem;
+    color: var(--color-text-muted);
+  }
+
+  .app__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm);
+    margin-block-start: auto;
+    padding-block-start: var(--space-lg);
+  }
+
+  .app__price {
+    font-size: var(--step-1);
+    font-weight: 700;
+  }
+</style>

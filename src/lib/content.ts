@@ -12,3 +12,18 @@ export async function getTeam(): Promise<CollectionEntry<'team'>[]> {
     (a, b) => a.data.order - b.data.order || a.data.name.localeCompare(b.data.name),
   );
 }
+
+export async function getApps(): Promise<CollectionEntry<'apps'>[]> {
+  const entries = await getCollection('apps', ({ data }) => includeDrafts || !data.draft);
+  return entries.sort(
+    (a, b) => a.data.order - b.data.order || a.data.title.localeCompare(b.data.title),
+  );
+}
+
+export const PLATFORM_LABELS: Record<string, string> = {
+  web: 'Web',
+  ios: 'iOS',
+  android: 'Android',
+  api: 'API',
+  desktop: 'Desktop',
+};

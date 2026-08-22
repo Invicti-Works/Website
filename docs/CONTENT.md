@@ -14,34 +14,32 @@ Every version is kept in Git, so nothing is ever really lost.
 
 | Section | What it controls |
 | --- | --- |
-| **Products** | The applications you sell. **Adding one here creates its own landing page** at `/products/<name>` and lists it on the home page and the products index. |
-| **Team** | The founder cards on `/about`. |
-| **Pages** | Standalone pages such as *About*. Adding a new one (e.g. *Privacy*) publishes it at `/<name>` automatically. |
-| **News** | Posts on `/news`, newest first. Also drives the RSS feed. |
-| **Site settings** | Company name, tagline, contact details, social links. Feeds the header, footer, contact page and Google results. |
+| **Team** | The founder cards at the foot of the home page. |
+| **Marketplace apps** | The applications you sell. **The `/marketplace` page does not exist until there is one here** — adding your first app publishes the storefront, and removing the last one takes it away again. |
+| **Site settings** | Company name, tagline, contact details, social links. Feeds the header, footer, contact page and Google results. The **Description** is also the sentence under the home-page headline. |
 
-## Adding a product
+## Selling an app
 
-This is the main thing the site is built to do. **Products → New Product**, then:
+**Marketplace apps → New App.** Nothing is public until you save one without
+**Draft** ticked.
 
-- **Product name, Tagline, Summary** — the only genuinely required fields. Tagline
-  is the one-line pitch; Summary is what shows on cards, in Google results and
-  in the preview card when someone shares the link.
-- **Category and Status** — drive the badges. `Live` and `In beta` get a coloured
-  badge; the others stay neutral. The label text carries the meaning, so the
-  badge still reads correctly for someone who cannot distinguish the colours.
-- **Platforms** — Web, iOS, Android, API, Desktop. Shown as badges.
+- **App name, Tagline, Summary** — the required fields. Tagline is the one-line
+  pitch; Summary is the paragraph on the card.
+- **Price** — shown exactly as you type it (`$49`, `From $12/month`). It is
+  display text only; what a buyer is actually charged comes from Stripe.
+- **Status** — *Available* or *Coming soon*. Coming soon adds a badge.
+- **Platforms** — Web, iOS, Android, API, Desktop. Shown as pills.
+- **Stripe payment link** — create a Payment Link in the Stripe dashboard and
+  paste it here. **Leave it blank and the card shows "Notify me" instead of
+  "Buy"**, which is how you list something before it is ready to sell.
+- **Features** — a short bulleted list on the card.
 - **Sort order** — lower numbers first.
-- **Features** — become the "What it does" checklist.
-- **Pricing tiers** — *optional*. Leave the list empty and the whole pricing
-  section is hidden, so a product with no price yet does not look unfinished.
-- **Questions** — optional FAQ, also hidden when empty.
-- **External links** — demo, product site, App Store, Google Play. Each becomes a
-  button in the hero.
-- **Page content** — the Markdown body: the problem, how it works, who it is for.
 
-Set **Draft** while you are still writing. Draft products are invisible on the
-live site.
+No Stripe key is stored on the site, so there is nothing here that can leak.
+
+> Taking payment and *delivering* the app are two different jobs. A Payment Link
+> handles the money. How the buyer receives what they bought — a download, a
+> licence key, a promo code — is worth deciding before your first sale.
 
 ## The Draft switch
 
@@ -82,5 +80,5 @@ In order of likelihood:
 2. **You do not have write access to the repository.** Ask whoever administers
    the GitHub organization.
 3. **The `main` branch requires pull-request review.** See `docs/SETUP.md`
-   step 8 — the CMS commits directly, so branch protection and direct CMS saves
+   step 10 — the CMS commits directly, so branch protection and direct CMS saves
    cannot both be switched on.

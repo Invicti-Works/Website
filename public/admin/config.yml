@@ -70,6 +70,77 @@ collections:
       - { name: body, label: Bio, widget: markdown }
 
   # ---------------------------------------------------------------
+  # Apps -- the marketplace. The /marketplace page does not exist at
+  # all until this collection has an entry; adding the first one
+  # publishes the storefront. Leave "Stripe payment link" empty to
+  # list an app as coming soon.
+  # ---------------------------------------------------------------
+  - name: apps
+    label: Marketplace apps
+    label_singular: App
+    folder: src/content/apps
+    create: true
+    slug: '{{slug}}'
+    extension: md
+    format: frontmatter
+    identifier_field: title
+    summary: '{{title}} — {{status}}'
+    sortable_fields: ['order', 'title']
+    fields:
+      - { name: title, label: App name, widget: string }
+      - name: tagline
+        label: Tagline
+        widget: string
+        hint: One short positioning line, shown under the name.
+      - name: summary
+        label: Summary
+        widget: text
+        hint: One or two sentences for the card.
+      - name: price
+        label: Price
+        widget: string
+        required: false
+        hint: 'Shown as written, e.g. $49 or From $12/month. Does not set the charge -- Stripe does that.'
+      - name: status
+        label: Status
+        widget: select
+        default: coming-soon
+        options:
+          - { label: Available, value: available }
+          - { label: Coming soon, value: coming-soon }
+      - name: platforms
+        label: Platforms
+        widget: select
+        multiple: true
+        required: false
+        options:
+          - { label: Web, value: web }
+          - { label: iOS, value: ios }
+          - { label: Android, value: android }
+          - { label: API, value: api }
+          - { label: Desktop, value: desktop }
+      - name: stripeUrl
+        label: Stripe payment link
+        widget: string
+        required: false
+        pattern: ['^https://', 'Must be the full https:// link from Stripe']
+        hint: >-
+          Create a Payment Link in the Stripe dashboard and paste it here. Leave
+          empty and the card offers "Notify me" instead of "Buy".
+      - name: features
+        label: Features
+        widget: list
+        required: false
+        field: { name: item, label: Feature, widget: string }
+      - name: order
+        label: Sort order
+        widget: number
+        value_type: int
+        default: 100
+        hint: Lower numbers appear first.
+      - { name: draft, label: Draft, widget: boolean, default: false }
+
+  # ---------------------------------------------------------------
   # Site settings
   # ---------------------------------------------------------------
   - name: settings

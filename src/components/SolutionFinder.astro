@@ -1,0 +1,276 @@
+---
+import site from '../data/site.json';
+
+/**
+ * "Find Your Solution" — the enquiry form.
+ *
+ * Progressive enhancement, in three layers, so a lead is never silently lost:
+ *
+ *  1. No JavaScript: it is an ordinary <form> that POSTs to /api/enquiry. The
+ *     Worker replies with a real HTML confirmation page.
+ *  2. With JavaScript: the submit is intercepted and posted as JSON, and the
+ *     result is shown inline without leaving the page.
+ *  3. Endpoint unavailable (no API key set yet, network failure, 5xx): the
+ *     script falls back to a prefilled mailto built from the same answers, so
+ *     the enquiry still reaches the same inbox.
+ *
+ * Layer 3 matters more than it looks: it is what makes this safe to ship
+ * before RESEND_API_KEY exists on the Worker. See docs/SETUP.md step 6.
+ */
+
+const needs = [
+  { value: 'mobile', label: 'A mobile app' },
+  { value: 'web', label: 'A web platform' },
+  { value: 'both', label: 'Both — an app and the platform behind it' },
+  { value: 'existing', label: 'Help with something already built' },
+  { value: 'unsure', label: 'Not sure yet' },
+];
+
+const timelines = [
+  { value: 'exploring', label: 'Just exploring' },
+  { value: '3months', label: 'Within 3 months' },
+  { value: '6months', label: 'Within 6 months' },
+  { value: 'live', label: 'Already have a deadline' },
+];
+---
+
+<section class="section finder" id="find-your-solution" aria-labelledby="finder-heading">
+  <div class="container">
+    <div class="section-head">
+      <h2 id="finder-heading">Find your solution</h2>
+      <p class="muted">
+        Tell us what you need built. A few sentences is plenty — we will come back
+        with an honest read on scope and approach, including when the answer is
+        that you do not need us yet.
+      </p>
+    </div>
+
+    <form class="finder__form" id="enquiry-form" method="POST" action="/api/enquiry">
+      <div class="field">
+        <label for="f-name">Your name</label>
+        <input id="f-name" name="name" type="text" required autocomplete="name" />
+      </div>
+
+      <div class="field">
+        <label for="f-email">Email</label>
+        <input id="f-email" name="email" type="email" required autocomplete="email" />
+      </div>
+
+      <div class="field">
+        <label for="f-org">Organization <span class="field__hint">(optional)</span></label>
+        <input id="f-org" name="organization" type="text" autocomplete="organization" />
+      </div>
+
+      <div class="field">
+        <label for="f-need">What do you need?</label>
+        <select id="f-need" name="need" required>
+          {needs.map((n) => <option value={n.value}>{n.label}</option>)}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="f-timeline">Timeline <span class="field__hint">(optional)</span></label>
+        <select id="f-timeline" name="timeline">
+          <option value="">—</option>
+          {timelines.map((t) => <option value={t.value}>{t.label}</option>)}
+        </select>
+      </div>
+
+      <div class="field field--wide">
+        <label for="f-message">What are you trying to build?</label>
+        <textarea id="f-message" name="message" rows="5" required></textarea>
+      </div>
+
+      {/*
+        Honeypot. Real people never see it, so anything filled in here is a bot
+        and the Worker drops the request. `tabindex="-1"` and `autocomplete="off"`
+        keep it out of the way of keyboard and password-manager users.
+      */}
+      <div class="finder__trap" aria-hidden="true">
+        <label for="f-company-url">Do not fill this in</label>
+        <input id="f-company-url" name="companyUrl" type="text" tabindex="-1" autocomplete="off" />
+      </div>
+
+      <div class="field--wide finder__actions">
+        <button class="button" type="submit">Send enquiry</button>
+        <p class="finder__fallback muted">
+          Prefer email? <a href={`mailto:${site.email}`}>{site.email}</a>
+        </p>
+      </div>
+
+      <p class="finder__status field--wide" id="enquiry-status" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+
+<script is:inline define:vars={{ contactEmail: site.email }}>
+  (() => {
+    const form = document.getElementById('enquiry-form');
+    const status = document.getElementById('enquiry-status');
+    if (!form || !status) return;
+
+    const setStatus = (text, kind) => {
+      status.textContent = text;
+      status.dataset.kind = kind;
+    };
+
+    /** Last-resort path: hand the same answers to the visitor's mail client. */
+    const mailtoFallback = (data) => {
+      const body = [
+        `Name: ${data.name}`,
+        `Email: ${data.email}`,
+        data.organization ? `Organization: ${data.organization}` : null,
+        `Needs: ${data.need}`,
+        data.timeline ? `Timeline: ${data.timeline}` : null,
+        '',
+        data.message,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
+      const href =
+        `mailto:${contactEmail}` +
+        `?subject=${encodeURIComponent('Find your solution enquiry')}` +
+        `&body=${encodeURIComponent(body)}`;
+
+      setStatus('Opening your email app instead — your answers are already filled in.', 'warn');
+      window.location.href = href;
+    };
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const button = form.querySelector('button[type="submit"]');
+      const data = Object.fromEntries(new FormData(form).entries());
+
+      button.disabled = true;
+      setStatus('Sending…', 'pending');
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify(data),
+        });
+
+        if (response.ok) {
+          form.reset();
+          setStatus('Thank you — we have got it, and will come back to you shortly.', 'ok');
+          return;
+        }
+
+        // 400 means the visitor can fix it; anything else is our problem, so
+        // fall back rather than telling them to try again later.
+        if (response.status === 400) {
+          const payload = await response.json().catch(() => ({}));
+          setStatus(payload.error ?? 'Please check the form and try again.', 'error');
+          return;
+        }
+
+        mailtoFallback(data);
+      } catch {
+        mailtoFallback(data);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  })();
+</script>
+
+<style>
+  .finder__form {
+    display: grid;
+    gap: var(--space-md);
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .field {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .field--wide {
+    grid-column: 1 / -1;
+  }
+
+  .field label {
+    font-weight: 600;
+    font-size: var(--step--1);
+  }
+
+  .field__hint {
+    font-weight: 400;
+    color: var(--color-text-muted);
+  }
+
+  .field input,
+  .field select,
+  .field textarea {
+    font: inherit;
+    color: var(--color-text);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 0.7rem 0.85rem;
+    min-height: 44px;
+    width: 100%;
+  }
+
+  .field textarea {
+    resize: vertical;
+  }
+
+  .field :is(input, select, textarea):focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+    border-color: var(--color-focus);
+  }
+
+  .finder__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .finder__fallback {
+    margin: 0;
+    font-size: var(--step--1);
+  }
+
+  /* Visually hidden rather than display:none -- some bots skip anything the
+     CSS hides outright, and this one is meant to be filled in. */
+  .finder__trap {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .finder__status:empty {
+    display: none;
+  }
+
+  .finder__status {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-subtle);
+    font-weight: 500;
+  }
+
+  .finder__status[data-kind='ok'] {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .finder__status[data-kind='error'] {
+    border-color: var(--color-accent-warm);
+    color: var(--color-accent-warm);
+  }
+</style>

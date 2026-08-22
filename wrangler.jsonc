@@ -20,9 +20,9 @@
     "html_handling": "auto-trailing-slash",
     // Lets worker/index.js hand non-OAuth requests back to the asset layer.
     "binding": "ASSETS",
-    // Only these two paths invoke the Worker before assets are checked, so
+    // Only these paths invoke the Worker before assets are checked, so
     // ordinary page and image requests stay on the free, unmetered tier.
-    "run_worker_first": ["/oauth/authorize", "/oauth/redirect"]
+    "run_worker_first": ["/oauth/authorize", "/oauth/redirect", "/api/enquiry"]
   },
 
   // Keeps <name>.<subdomain>.workers.dev serving, and restores per-branch and

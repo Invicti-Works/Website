@@ -10,19 +10,18 @@ applications. Built with [Astro](https://astro.build), edited through
 - **Setting up hosting, the CMS login and Access?** → [`docs/SETUP.md`](docs/SETUP.md)
 - **Colours and logo?** → [`docs/BRAND.md`](docs/BRAND.md)
 
-## Adding a product
+## What the site is
 
-The site is built around this. Add a Markdown file to `src/content/products/`
-(or use **Products → New Product** in the CMS) and you get:
+Two public pages. The home page says what we engineer, carries the "Find your
+solution" enquiry form, and ends with the founder bios. `/contact` is a
+paragraph and an email address.
 
-- a landing page at `/products/<slug>` with hero, features, screenshots,
-  optional pricing tiers and FAQ,
-- a card on the home page and the products index,
-- `SoftwareApplication` structured data for search engines,
-- an entry in the sitemap.
-
-No code change, no route to register. Pricing and FAQ sections hide themselves
-when empty, so an unpriced product does not look unfinished.
+`/marketplace` is a third page that **does not exist until it has something to
+sell.** It is built only when the `apps` collection has a published entry, so
+there is no empty storefront and no navigation link pointing at one. Adding the
+first app in the CMS publishes it; removing the last one takes it away. Paste a
+Stripe Payment Link into an app to make it purchasable — see `docs/SETUP.md`
+step 7.
 
 ## Running it locally
 
@@ -39,6 +38,7 @@ Drafts are visible in `npm run dev` and excluded from production builds.
 | --- | --- |
 | `npm run dev` | Local dev server with hot reload |
 | `npm run check` | Type-check, and validate all content against its schema |
+| `npm test` | Test the Worker's enquiry endpoint |
 | `npm run build` | Production build into `dist/` |
 | `npm run preview` | Serve the production build locally |
 | `npm run cf:preview` | Build, then serve through the real Cloudflare runtime |
@@ -61,20 +61,20 @@ deploy.
 brand/              Original logo artwork you uploaded (source, not served)
 src/
   content/          Markdown, edited through the CMS
-    products/         one file per application -> one landing page
-    team/             founder bios
-    pages/            about, and any standalone page added later
-    news/
+    team/             founder bios, shown at the foot of the home page
+    apps/             marketplace listings -- an entry here creates /marketplace
   content.config.ts Schemas -- content violating these fails the build
   data/site.json    Company details, also editable in the CMS
   layouts/          BaseLayout (html shell + SEO), PageLayout (title + body)
-  components/       Header, Footer, Logo, Seo, ProductCard
+  components/       Header, Footer, Logo, Seo, HeroArt, SolutionFinder
   pages/            Routes
-  lib/content.ts    Collection queries, sorting, draft filtering, labels
+  lib/content.ts    Collection queries, sorting, draft filtering
   styles/global.css Design tokens, base styles, marketing components
 worker/
-  index.js          Worker entry: OAuth paths, else hand back to assets
+  index.js          Worker entry: OAuth and /api/enquiry, else back to assets
   cms-auth.js       GitHub OAuth flow, vendored from sveltia-cms-auth (MIT)
+  enquiry.js        The "Find your solution" form handler
+  enquiry.test.mjs  Its tests -- `npm test`, and CI runs them
 public/             Derived web assets, CMS, uploads
 wrangler.jsonc      Cloudflare deployment config
 ```
@@ -82,10 +82,22 @@ wrangler.jsonc      Cloudflare deployment config
 ## Notes for whoever works on this next
 
 - **`wrangler.jsonc` has a `main`, but static pages never reach it.** Assets are
-  served without invoking the Worker; only the two paths in
-  `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`) run it, so
-  ordinary traffic stays on the free unmetered asset tier. The Worker exists
-  solely to sign CMS editors in — see `worker/index.js`.
+  served without invoking the Worker; only the paths in
+  `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`,
+  `/api/enquiry`) run it, so ordinary traffic stays on the free unmetered asset
+  tier. The Worker signs CMS editors in and receives the enquiry form — see
+  `worker/index.js`.
+- **`astro check` does not cover `worker/`.** It only looks at `src/`, so the
+  Worker's logic is tested by `npm test` instead. A syntax error there breaks
+  CMS sign-in *and* the enquiry form together, since they share one entry point.
+- **The enquiry form degrades rather than failing.** No `RESEND_API_KEY` yet, a
+  5xx, a network error — the page falls back to a prefilled `mailto` so the
+  lead still arrives. This is what makes it safe to ship ahead of `docs/SETUP.md`
+  step 6.
+- **Optional CMS string fields must tolerate `''`.** The CMS writes an empty
+  string for a field an editor cleared, and a bare `.optional()` rejects that
+  and fails the build. See `stripeUrl` in `src/content.config.ts` for the
+  `preprocess` that handles it.
 - **Changing the custom domains in `wrangler.jsonc` is ordering-sensitive.**
   Cloudflare will not create one over a pre-existing DNS record, and because the
   failure is in the trigger update it fails the *whole* deploy — the site stops
