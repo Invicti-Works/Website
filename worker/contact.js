@@ -1,15 +1,15 @@
 /**
- * POST /api/enquiry — the "Find your solution" form handler.
+ * POST /api/contact — the "Find your solution" form handler.
  *
  * Accepts either JSON (the enhanced path) or a normal form POST (the no-JS
- * path) and emails the enquiry on via Resend. Replies in kind: JSON to a fetch,
+ * path) and emails the message on via Resend. Replies in kind: JSON to a fetch,
  * a rendered HTML confirmation to a browser that submitted the form directly.
  *
  * Configuration, all set on the Worker (see docs/SETUP.md step 6):
  *   RESEND_API_KEY   required. Without it this returns 503 and the browser
- *                    falls back to mailto, so no enquiry is lost.
- *   ENQUIRY_TO       optional. Defaults to info@invicti.works.
- *   ENQUIRY_FROM     optional. Defaults to website@invicti.works, which must be
+ *                    falls back to mailto, so no message is lost.
+ *   CONTACT_TO       optional. Defaults to info@invicti.works.
+ *   CONTACT_FROM     optional. Defaults to website@invicti.works, which must be
  *                    a domain verified in Resend.
  */
 
@@ -97,7 +97,7 @@ async function readSubmission(request) {
   return Object.fromEntries(new URLSearchParams(raw).entries());
 }
 
-export async function handleEnquiry(request, env) {
+export async function handleContact(request, env) {
   const asJson = wantsJson(request);
 
   if (request.method !== 'POST') {
@@ -116,7 +116,7 @@ export async function handleEnquiry(request, env) {
   // Honeypot: a real visitor never sees this field. Answer 200 rather than an
   // error so the bot records a success and does not retry.
   if (typeof data.companyUrl === 'string' && data.companyUrl.trim() !== '') {
-    return asJson ? json({ ok: true }, 200) : htmlPage('Thank you', 'Your enquiry has been sent.', 200);
+    return asJson ? json({ ok: true }, 200) : htmlPage('Thank you', 'Your message has been sent.', 200);
   }
 
   const name = String(data.name ?? '').trim();
@@ -145,10 +145,10 @@ export async function handleEnquiry(request, env) {
   // non-400 as "not the visitor's fault" and falls back to mailto.
   if (!env.RESEND_API_KEY) {
     return asJson
-      ? json({ error: 'Enquiry delivery is not configured yet.' }, 503)
+      ? json({ error: 'Message delivery is not configured yet.' }, 503)
       : htmlPage(
           'Please email us directly',
-          `Our enquiry form is not finished being set up. Please email ${env.ENQUIRY_TO ?? DEFAULT_TO}.`,
+          `Our contact form is not finished being set up. Please email ${env.CONTACT_TO ?? DEFAULT_TO}.`,
           503,
         );
   }
@@ -170,11 +170,11 @@ export async function handleEnquiry(request, env) {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      from: env.ENQUIRY_FROM ?? DEFAULT_FROM,
-      to: [env.ENQUIRY_TO ?? DEFAULT_TO],
+      from: env.CONTACT_FROM ?? DEFAULT_FROM,
+      to: [env.CONTACT_TO ?? DEFAULT_TO],
       // So hitting reply in the inbox writes to the enquirer, not to us.
       reply_to: email,
-      subject: `Website enquiry — ${name}${organization ? ` (${organization})` : ''}`,
+      subject: `Website message — ${name}${organization ? ` (${organization})` : ''}`,
       text: lines.join('\n'),
     }),
   });
@@ -182,17 +182,17 @@ export async function handleEnquiry(request, env) {
   if (!response.ok) {
     // Never surface the provider's response body: it can carry key state and
     // account detail. The status is enough to debug from the Worker logs.
-    console.error('Resend rejected the enquiry', response.status);
+    console.error('Resend rejected the message', response.status);
     return asJson
       ? json({ error: 'We could not send that just now.' }, 502)
       : htmlPage(
           'Please email us directly',
-          `We could not send that just now. Please email ${env.ENQUIRY_TO ?? DEFAULT_TO}.`,
+          `We could not send that just now. Please email ${env.CONTACT_TO ?? DEFAULT_TO}.`,
           502,
         );
   }
 
   return asJson
     ? json({ ok: true }, 200)
-    : htmlPage('Thank you', 'We have got your enquiry and will come back to you shortly.', 200);
+    : htmlPage('Thank you', 'We have got your message and will come back to you shortly.', 200);
 }

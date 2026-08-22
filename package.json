@@ -16,7 +16,7 @@
     "check": "astro check",
     "deploy": "npm run build && wrangler deploy",
     "cf:preview": "npm run build && wrangler dev",
-    "test": "node worker/enquiry.test.mjs"
+    "test": "node worker/contact.test.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.6.0",

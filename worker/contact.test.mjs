@@ -1,5 +1,5 @@
 /**
- * Tests for the enquiry endpoint.
+ * Tests for the contact endpoint.
  *
  * The Worker is not covered by `astro check` -- that only looks at src/ -- so
  * without this nothing exercises worker/ beyond the bundler proving it parses.
@@ -9,10 +9,10 @@
  * built in, and adding a runner to a site with one test file is not worth the
  * dependency.
  */
-import { handleEnquiry } from './enquiry.js';
+import { handleContact } from './contact.js';
 
 const post = (body, headers = {}) =>
-  new Request('https://invicti.works/api/enquiry', {
+  new Request('https://invicti.works/api/contact', {
     method: 'POST',
     headers: { 'content-type': 'application/json', accept: 'application/json', ...headers },
     body: JSON.stringify(body),
@@ -24,7 +24,7 @@ const okFetch = async (url, init) => { sent = { url, init }; return new Response
 const failFetch = async () => new Response('{"error":"secret leaked here"}', { status: 422 });
 
 const cases = [
-  ['GET is rejected',            new Request('https://x/api/enquiry', {headers:{accept:'application/json'}}), {}, 405],
+  ['GET is rejected',            new Request('https://x/api/contact', {headers:{accept:'application/json'}}), {}, 405],
   ['no API key -> 503',          post(valid), {}, 503],
   ['missing name -> 400',        post({ ...valid, name: '' }), { RESEND_API_KEY: 'k' }, 400],
   ['bad email -> 400',           post({ ...valid, email: 'nope' }), { RESEND_API_KEY: 'k' }, 400],
@@ -37,7 +37,7 @@ let failures = 0;
 for (const [label, req, env, want] of cases) {
   sent = null;
   globalThis.fetch = okFetch;
-  const res = await handleEnquiry(req, env);
+  const res = await handleContact(req, env);
   const mark = res.status === want ? 'PASS' : 'FAIL';
   if (mark === 'FAIL') failures++;
   console.log(`${mark}  ${label.padEnd(28)} got ${res.status} want ${want}`);
@@ -46,7 +46,7 @@ for (const [label, req, env, want] of cases) {
 
 // Provider failure must not leak the provider's response body.
 globalThis.fetch = failFetch;
-const res = await handleEnquiry(post(valid), { RESEND_API_KEY: 'k' });
+const res = await handleContact(post(valid), { RESEND_API_KEY: 'k' });
 const body = await res.text();
 console.log(`${res.status === 502 ? 'PASS' : 'FAIL'}  provider failure -> 502    got ${res.status}`);
 console.log(`${body.includes('secret leaked here') ? 'FAIL' : 'PASS'}  provider body not leaked`);
@@ -54,12 +54,12 @@ if (res.status !== 502 || body.includes('secret leaked here')) failures++;
 
 // Form-encoded (no-JS path) must get HTML back, not JSON.
 globalThis.fetch = okFetch;
-const formReq = new Request('https://invicti.works/api/enquiry', {
+const formReq = new Request('https://invicti.works/api/contact', {
   method: 'POST',
   headers: { 'content-type': 'application/x-www-form-urlencoded' },
   body: new URLSearchParams(valid).toString(),
 });
-const formRes = await handleEnquiry(formReq, { RESEND_API_KEY: 'k' });
+const formRes = await handleContact(formReq, { RESEND_API_KEY: 'k' });
 const ct = formRes.headers.get('content-type') ?? '';
 console.log(`${ct.includes('text/html') ? 'PASS' : 'FAIL'}  no-JS path returns HTML  (${ct})`);
 if (!ct.includes('text/html')) failures++;
@@ -75,7 +75,7 @@ if (payload.reply_to !== valid.email) failures++;
 const { default: workerEntry } = await import('./index.js');
 const assets = { fetch: async () => new Response('asset', { status: 200 }) };
 
-for (const path of ['/api/enquiry', '/api/enquiry/']) {
+for (const path of ['/api/contact', '/api/contact/']) {
   const res = await workerEntry.fetch(
     new Request(`https://invicti.works${path}`, {
       method: 'POST',
@@ -84,14 +84,14 @@ for (const path of ['/api/enquiry', '/api/enquiry/']) {
     }),
     { ASSETS: assets },
   );
-  // 503 means the enquiry handler ran (no API key); 200 would mean it fell
+  // 503 means the contact handler ran (no API key); 200 would mean it fell
   // through to the asset stub instead, which is the bug this guards against.
   const ok = res.status === 503;
   console.log(`${ok ? 'PASS' : 'FAIL'}  routed ${path.padEnd(15)} got ${res.status} want 503`);
   if (!ok) failures++;
 }
 
-// The OAuth paths matter more than the enquiry one here: cms-auth.js re-parses
+// The OAuth paths matter more than the contact one here: cms-auth.js re-parses
 // the URL off the request it is handed and matches the path exactly, so routing
 // the trailing-slash form to it without rewriting the URL produces its own
 // empty-bodied 404 -- a blank page in the sign-in popup. Asserting the route is

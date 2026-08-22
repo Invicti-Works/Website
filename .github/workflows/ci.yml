@@ -43,7 +43,7 @@ jobs:
 
       - name: Test the Worker
         # astro check only covers src/, so without this nothing exercises the
-        # enquiry endpoint's validation, honeypot or failure handling.
+        # contact endpoint's validation, honeypot or failure handling.
         run: npm test
 
       - name: Build

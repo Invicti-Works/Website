@@ -117,12 +117,14 @@ def main() -> None:
     os.makedirs(OUT, exist_ok=True)
     written = []
 
-    # Header lockups. 640px wide keeps a ~320px slot crisp at 2x DPR.
+    # Header lockups. 1280px wide keeps the header's 380px slot crisp at 3x DPR
+    # -- it was 640, sized for a 320px slot, and the header logo has since
+    # doubled. A palette PNG of flat brand colour costs very little to widen.
     for key, name in (
         ('horizontal_colour', 'logo-horizontal.png'),
         ('horizontal_white', 'logo-horizontal-white.png'),
     ):
-        im = fit_width(trim(SOURCES[key]), 640)
+        im = fit_width(trim(SOURCES[key]), 1280)
         save_flat(im, f'{OUT}/{name}')
         written.append(name)
 

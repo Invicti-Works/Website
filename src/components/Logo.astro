@@ -2,36 +2,38 @@
 import site from '../data/site.json';
 
 interface Props {
-  /** Rendered width in CSS pixels. The source files are 640px wide, so
-   *  anything up to 320 stays crisp on a 2x display. */
+  /** Rendered width in CSS pixels. The source file is 1280px wide, so the
+   *  header's 380 stays crisp past 3x DPR. */
   width?: number;
 }
 
 const { width = 190 } = Astro.props;
-// Source is 640x156, so the height follows from the requested width.
+// Source is 1280x313, so the height follows from the requested width.
 const height = Math.round(width * (156 / 640));
 ---
 
 {/*
-  Two files rather than one, because the colour lockup's navy wordmark is
-  unreadable on a dark background. `<picture>` swaps them at the browser
-  level, so no JavaScript and no flash of the wrong logo.
+  A plain <img>, not a <picture> that swapped in the white lockup under
+  `prefers-color-scheme: dark`. The site has one palette now, so the header is
+  always white and the colour lockup is always the correct one. The white file
+  is still used, on the navy footer, where it is chosen by position rather than
+  by the visitor's settings.
 */}
-<picture class="logo">
-  <source srcset="/logo-horizontal-white.png" media="(prefers-color-scheme: dark)" />
-  <img
-    src="/logo-horizontal.png"
-    alt={site.name}
-    width={width}
-    height={height}
-    decoding="async"
-    fetchpriority="high"
-  />
-</picture>
+<img
+  class="logo"
+  src="/logo-horizontal.png"
+  alt={site.name}
+  width={width}
+  height={height}
+  decoding="async"
+  fetchpriority="high"
+/>
 
 <style>
-  .logo,
-  .logo img {
+  .logo {
     display: block;
+    /* Never overflow a narrow viewport at the larger size. */
+    max-width: 100%;
+    height: auto;
   }
 </style>

@@ -1,5 +1,6 @@
 ---
 import site from '../data/site.json';
+import SocialIcon from './SocialIcon.astro';
 import { getApps } from '../lib/content';
 
 const year = new Date().getFullYear();
@@ -57,12 +58,15 @@ const labels: Record<string, string> = {
       socialLinks.length > 0 && (
         <div>
           <h2 class="eyebrow">Follow</h2>
-          <ul class="site-footer__list">
+          <ul class="site-footer__social" role="list">
             {socialLinks.map(([key, url]) => (
               <li>
                 <a href={url} rel="me noopener noreferrer" target="_blank">
-                  {labels[key] ?? key}
-                  <span class="visually-hidden"> (opens in a new tab)</span>
+                  <SocialIcon network={key} />
+                  {/* The icon is aria-hidden, so the accessible name lives here. */}
+                  <span class="visually-hidden">
+                    {labels[key] ?? key} (opens in a new tab)
+                  </span>
                 </a>
               </li>
             ))}
@@ -83,12 +87,6 @@ const labels: Record<string, string> = {
     background: var(--brand-navy);
     color: #ffffff;
     padding-block: var(--space-2xl) var(--space-md);
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .site-footer {
-      background: #04203f;
-    }
   }
 
   .site-footer a {
@@ -113,6 +111,34 @@ const labels: Record<string, string> = {
 
   .site-footer .eyebrow {
     color: #94a8c4;
+  }
+
+  .site-footer__social {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    list-style: none;
+    padding: 0;
+    margin-block-start: var(--space-xs);
+  }
+
+  .site-footer__social a {
+    /* 44px hit area around a 22px glyph -- the icon alone is well under the
+       minimum comfortable target size. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+
+  .site-footer__social a:hover {
+    color: var(--brand-navy);
+    background: #ffffff;
+    border-color: #ffffff;
   }
 
   .site-footer__list {

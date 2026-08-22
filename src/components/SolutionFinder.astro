@@ -2,17 +2,17 @@
 import site from '../data/site.json';
 
 /**
- * "Find Your Solution" — the enquiry form.
+ * "Find Your Solution" — the contact form.
  *
  * Progressive enhancement, in three layers, so a lead is never silently lost:
  *
- *  1. No JavaScript: it is an ordinary <form> that POSTs to /api/enquiry. The
+ *  1. No JavaScript: it is an ordinary <form> that POSTs to /api/contact. The
  *     Worker replies with a real HTML confirmation page.
  *  2. With JavaScript: the submit is intercepted and posted as JSON, and the
  *     result is shown inline without leaving the page.
  *  3. Endpoint unavailable (no API key set yet, network failure, 5xx): the
  *     script falls back to a prefilled mailto built from the same answers, so
- *     the enquiry still reaches the same inbox.
+ *     the message still reaches the same inbox.
  *
  * Layer 3 matters more than it looks: it is what makes this safe to ship
  * before RESEND_API_KEY exists on the Worker. See docs/SETUP.md step 6.
@@ -45,7 +45,7 @@ const timelines = [
       </p>
     </div>
 
-    <form class="finder__form" id="enquiry-form" method="POST" action="/api/enquiry">
+    <form class="finder__form" id="solution-form" method="POST" action="/api/contact">
       <div class="field">
         <label for="f-name">Your name</label>
         <input id="f-name" name="name" type="text" required autocomplete="name" />
@@ -92,21 +92,21 @@ const timelines = [
       </div>
 
       <div class="field--wide finder__actions">
-        <button class="button" type="submit">Send enquiry</button>
+        <button class="button" type="submit">Send</button>
         <p class="finder__fallback muted">
           Prefer email? <a href={`mailto:${site.email}`}>{site.email}</a>
         </p>
       </div>
 
-      <p class="finder__status field--wide" id="enquiry-status" role="status" aria-live="polite"></p>
+      <p class="finder__status field--wide" id="solution-status" role="status" aria-live="polite"></p>
     </form>
   </div>
 </section>
 
 <script is:inline define:vars={{ contactEmail: site.email }}>
   (() => {
-    const form = document.getElementById('enquiry-form');
-    const status = document.getElementById('enquiry-status');
+    const form = document.getElementById('solution-form');
+    const status = document.getElementById('solution-status');
     if (!form || !status) return;
 
     const setStatus = (text, kind) => {
@@ -130,7 +130,7 @@ const timelines = [
 
       const href =
         `mailto:${contactEmail}` +
-        `?subject=${encodeURIComponent('Find your solution enquiry')}` +
+        `?subject=${encodeURIComponent('Find your solution')}` +
         `&body=${encodeURIComponent(body)}`;
 
       setStatus('Opening your email app instead — your answers are already filled in.', 'warn');
