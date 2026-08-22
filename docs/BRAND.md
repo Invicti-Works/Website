@@ -51,7 +51,17 @@ serves was derived from them once and committed to `public/`:
 | `public/og-default.png` | `raw-02_00_43_PM.png` | 1200×630 social card, lockup centred on brand navy |
 
 Each was trimmed of its transparent margin, resized with Lanczos resampling and
-re-optimised — the header lockup is 52 KB rather than 1.1 MB.
+saved as a **64-colour palette PNG** — the header lockup is 7.8 KB, down from
+1.1 MB in the source and 52 KB as a full-colour PNG.
+
+The palette step matters more than it sounds. The logo is flat brand colour, not
+a photograph, so a small palette is visually indistinguishable: at display size
+even a 16-colour version shows no banding, and 64 colours measures an RMSE of
+1.6 against the original. Before this, the two logo files were **71% of the home
+page's total weight**. They are now 14 KB of a 49 KB page.
+
+Founder headshots stay as JPEG — they are photographic, and quantising them
+would band skin tones.
 
 ## Founder headshots
 

@@ -23,8 +23,12 @@ const lang = site.locale.split('_')[0] ?? 'en';
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* The .ico carries 16, 32 and 48px frames; declaring only one of them
+        made browsers that pick by size skip it. Modern browsers take the PNG,
+        older ones fall back to the .ico. Both are cut from the logo mark by
+        scripts/derive-brand-assets.py. */}
     <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
-    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#003870" />
