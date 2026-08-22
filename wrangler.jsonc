@@ -8,6 +8,23 @@
   "name": "websitebuild",
   "compatibility_date": "2026-08-22",
 
+  // Custom domains. Cloudflare creates the DNS records and issues the TLS
+  // certificates automatically on deploy -- no dashboard step, and the live
+  // hostnames stay in version control rather than in someone's memory.
+  //
+  // `custom_domain` (not a plain route) is correct here because the Worker IS
+  // the origin: there is no server behind it. Both hostnames serve the same
+  // site; the canonical URL emitted by src/components/Seo.astro points at the
+  // apex, so search engines are not offered two copies.
+  //
+  // Note: Cloudflare refuses to create a custom domain on a hostname that
+  // already has a CNAME record. If the deploy fails on this, delete the stale
+  // record for that hostname in DNS and redeploy.
+  "routes": [
+    { "pattern": "invicti.works", "custom_domain": true },
+    { "pattern": "www.invicti.works", "custom_domain": true }
+  ],
+
   // Static-assets-only Worker: there is no "main" entrypoint and no "binding",
   // so no Worker script ever runs. Asset requests are free and unmetered.
   // Adding "main" later would move this onto the metered request tier.
