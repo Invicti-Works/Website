@@ -14,6 +14,12 @@ name: Cloudflare DNS
 # Token needs, scoped to the invicti.works zone only:
 #   Zone -> Zone -> Read      (to resolve the zone ID)
 #   Zone -> DNS  -> Edit      (to list and delete records)
+#
+# Note the placeholder exclusion below. Once a Worker custom domain is
+# attached, Cloudflare writes its own proxied record for the hostname --
+# AAAA 100:: (and A 192.0.2.1 in some cases). Those records ARE the custom
+# domain. Without excluding them this workflow would report the live site as
+# blocking itself, and delete-stale would take it down.
 
 on:
   workflow_dispatch:
@@ -93,12 +99,16 @@ jobs:
             | . as $r
             | (if (["A","AAAA","CNAME"] | index($r.type))
                   and ($r.name == $zone or $r.name == "www." + $zone)
+                  and ($r.content != "100::" and $r.content != "192.0.2.1")
                then "**YES**" else "no" end) as $blocks
             | "| \($r.type) | \($r.name) | \($r.content) | \($r.proxied) | \($blocks) |"
           ' records.json >> "$GITHUB_STEP_SUMMARY"
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "MX, TXT, NS and other types are never touched by this workflow." >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "A proxied \`100::\` or \`192.0.2.1\` record on the apex or www is the Worker" >> "$GITHUB_STEP_SUMMARY"
+          echo "custom domain itself, written by Cloudflare. It is not a blocker and is never deleted." >> "$GITHUB_STEP_SUMMARY"
           cat "$GITHUB_STEP_SUMMARY"
 
       - name: Delete the blocking records
@@ -124,12 +134,19 @@ jobs:
           # filter on type alone would take out certificate validation and any
           # subdomain along with the two hostnames we actually want cleared.
           #
-          # Both filters were tested against a fixture covering exactly those
-          # cases before this workflow was committed.
+          # The third filter spares the custom domain itself. Once the Worker is
+          # attached, Cloudflare writes a proxied AAAA 100:: (or A 192.0.2.1)
+          # on the apex and www -- those records ARE the live site, and match
+          # the first two filters exactly. Deleting them detaches the domain.
+          #
+          # All three filters were tested against a fixture covering exactly
+          # these cases -- placeholders, mail, DKIM, another subdomain and
+          # _acme-challenge -- before being committed.
           jq -r --arg zone "$ZONE" '
             .result[]
             | select(.type | IN("A","AAAA","CNAME"))
             | select(.name == $zone or .name == "www." + $zone)
+            | select(.content != "100::" and .content != "192.0.2.1")
             | "\(.id)\t\(.type)\t\(.name)"
           ' records.json > doomed.tsv
 

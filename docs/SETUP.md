@@ -79,9 +79,23 @@ itself, so there are no deployment secrets to manage or rotate.
 
 ## 4. The domain
 
-**Done.** `invicti.works` and `www.invicti.works` are declared as custom domains
-in `wrangler.jsonc`, and the DNS records that were blocking them have been
-deleted. Kept here as the record of what was removed and why.
+**Done — the site is live on `invicti.works` and `www.invicti.works`.** Both are
+declared as custom domains in `wrangler.jsonc`; the records that were blocking
+them were deleted, and the deploy on `main` at 20:04 on 22 Aug 2026 attached the
+domains and issued the certificates. Kept here as the record of what changed.
+
+Cloudflare wrote its own records for the two hostnames when it attached them:
+
+| Type | Name | Content | Proxied |
+| --- | --- | --- | --- |
+| `AAAA` | `invicti.works` | `100::` | yes |
+| `AAAA` | `www.invicti.works` | `100::` | yes |
+
+> **Do not delete those.** `100::` is Cloudflare's placeholder for a
+> Worker-backed hostname — those records *are* the custom domain. They look
+> exactly like what the DNS workflow was written to remove, so the workflow now
+> excludes `100::` and `192.0.2.1` explicitly. Deleting them by hand in the
+> dashboard would detach the domain and take the site down.
 
 ### What was actually on the domain
 
