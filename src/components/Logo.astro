@@ -1,0 +1,37 @@
+---
+import site from '../data/site.json';
+
+interface Props {
+  /** Rendered width in CSS pixels. The source files are 640px wide, so
+   *  anything up to 320 stays crisp on a 2x display. */
+  width?: number;
+}
+
+const { width = 190 } = Astro.props;
+// Source is 640x156, so the height follows from the requested width.
+const height = Math.round(width * (156 / 640));
+---
+
+{/*
+  Two files rather than one, because the colour lockup's navy wordmark is
+  unreadable on a dark background. `<picture>` swaps them at the browser
+  level, so no JavaScript and no flash of the wrong logo.
+*/}
+<picture class="logo">
+  <source srcset="/logo-horizontal-white.png" media="(prefers-color-scheme: dark)" />
+  <img
+    src="/logo-horizontal.png"
+    alt={site.name}
+    width={width}
+    height={height}
+    decoding="async"
+    fetchpriority="high"
+  />
+</picture>
+
+<style>
+  .logo,
+  .logo img {
+    display: block;
+  }
+</style>

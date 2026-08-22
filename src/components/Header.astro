@@ -1,0 +1,99 @@
+---
+import Logo from './Logo.astro';
+
+const links = [
+  { href: '/products', label: 'Products' },
+  { href: '/about', label: 'About' },
+  { href: '/news', label: 'News' },
+  { href: '/contact', label: 'Contact' },
+];
+
+// Normalise so `/about` and `/about/` both mark the same link current.
+const current = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const isCurrent = (href: string) => current === href || current.startsWith(`${href}/`);
+---
+
+<header class="site-header">
+  <div class="container site-header__inner">
+    <a href="/" class="site-header__brand" aria-label="Invicti.Works — home">
+      <Logo width={190} />
+    </a>
+
+    <nav aria-label="Main">
+      <ul class="site-header__nav">
+        {
+          links.map((link) => (
+            <li>
+              <a href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+        <li>
+          <a class="button site-header__cta" href="/contact">Talk to us</a>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg);
+  }
+
+  .site-header__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-sm) var(--space-lg);
+    padding-block: var(--space-md);
+  }
+
+  .site-header__brand {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    text-decoration: none;
+  }
+
+  .site-header__nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-xs) var(--space-md);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .site-header__nav a:not(.button) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--color-text);
+    text-decoration: none;
+    font-weight: 500;
+    border-bottom: 2px solid transparent;
+  }
+
+  .site-header__nav a:not(.button):hover {
+    color: var(--color-accent);
+    border-bottom-color: currentColor;
+  }
+
+  /* Driven by `aria-current` so the visual state and the accessible state
+     can never drift apart. */
+  .site-header__nav a[aria-current='page'] {
+    color: var(--color-accent);
+    border-bottom-color: currentColor;
+    font-weight: 700;
+  }
+
+  .site-header__cta {
+    padding-block: var(--space-xs);
+  }
+</style>

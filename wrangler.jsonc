@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Worker name. This becomes <name>.<your-subdomain>.workers.dev until you
+  // attach the real domain in the Cloudflare dashboard.
+  "name": "invicti-works-website",
+  "compatibility_date": "2026-08-22",
+
+  // Static-assets-only Worker: there is no "main" entrypoint and no "binding",
+  // so no Worker script ever runs. Asset requests are free and unmetered.
+  // Adding "main" later would move this onto the metered request tier.
+  "assets": {
+    "directory": "./dist",
+    // Serve the nearest 404.html for unmatched paths. This is a content site,
+    // NOT a single-page app -- "single-page-application" would return HTTP 200
+    // for every bad URL and let soft-404s into the search index.
+    "not_found_handling": "404-page",
+    "html_handling": "auto-trailing-slash"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

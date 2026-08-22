@@ -1,0 +1,334 @@
+# Sveltia CMS configuration.
+# Docs: https://github.com/sveltia/sveltia-cms
+#
+# Field names here MUST stay in sync with the Zod schemas in
+# src/content.config.ts. If they drift, the site build fails with a validation
+# error instead of publishing broken pages. That is deliberate.
+
+backend:
+  name: github
+  repo: Invicti-Works/Website
+  branch: main
+  # REPLACE with the URL of your deployed sveltia-cms-auth Worker.
+  # See docs/SETUP.md, step 5. Sign-in fails until this is set.
+  base_url: https://REPLACE-ME.workers.dev
+
+media_folder: public/uploads
+public_folder: /uploads
+
+site_url: https://invicti.works
+
+collections:
+  # ---------------------------------------------------------------
+  # Products -- adding one here creates its landing page at
+  # /products/<slug> and lists it on the home page. No code needed.
+  # ---------------------------------------------------------------
+  - name: products
+    label: Products
+    label_singular: Product
+    folder: src/content/products
+    create: true
+    slug: '{{slug}}'
+    extension: md
+    format: frontmatter
+    identifier_field: title
+    summary: '{{title}} — {{status}}'
+    sortable_fields: ['order', 'title']
+    fields:
+      - { name: title, label: Product name, widget: string }
+      - name: tagline
+        label: Tagline
+        widget: string
+        hint: One short positioning line. Shown large under the name.
+      - name: summary
+        label: Summary
+        widget: text
+        hint: One or two sentences. Used on cards, in Google results and in social previews.
+      - name: category
+        label: Category
+        widget: select
+        options:
+          - { label: SaaS, value: saas }
+          - { label: Mobile app, value: mobile }
+          - { label: Platform, value: platform }
+      - name: status
+        label: Status
+        widget: select
+        default: in-development
+        options:
+          - { label: Live, value: live }
+          - { label: In beta, value: beta }
+          - { label: In development, value: in-development }
+          - { label: Concept, value: concept }
+      - name: platforms
+        label: Platforms
+        widget: select
+        multiple: true
+        required: false
+        options:
+          - { label: Web, value: web }
+          - { label: iOS, value: ios }
+          - { label: Android, value: android }
+          - { label: API, value: api }
+          - { label: Desktop, value: desktop }
+      - name: order
+        label: Sort order
+        widget: number
+        value_type: int
+        default: 100
+        hint: Lower numbers appear first.
+      - name: image
+        label: Hero image
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: src, label: File, widget: image }
+          - name: alt
+            label: Alt text
+            widget: string
+            hint: >-
+              Required. Describe the image for someone using a screen reader.
+              If it is purely decorative, remove the image field instead.
+      - name: screenshots
+        label: Screenshots
+        widget: list
+        required: false
+        collapsed: true
+        label_singular: Screenshot
+        fields:
+          - { name: src, label: File, widget: image }
+          - { name: alt, label: Alt text, widget: string }
+      - name: features
+        label: Features
+        widget: list
+        required: false
+        label_singular: Feature
+        summary: '{{fields.title}}'
+        fields:
+          - { name: title, label: Feature, widget: string }
+          - { name: description, label: Description, widget: string, required: false }
+      - name: pricing
+        label: Pricing tiers
+        widget: list
+        required: false
+        collapsed: true
+        label_singular: Tier
+        summary: '{{fields.name}} — {{fields.price}}'
+        hint: Leave empty for products that are not priced yet; the section is hidden.
+        fields:
+          - { name: name, label: Tier name, widget: string }
+          - { name: price, label: Price, widget: string, hint: 'e.g. $49 or Custom' }
+          - { name: period, label: Period, widget: string, required: false, hint: 'e.g. month, seat/month' }
+          - { name: description, label: Description, widget: string, required: false }
+          - name: includes
+            label: Includes
+            widget: list
+            required: false
+            field: { name: item, label: Item, widget: string }
+          - { name: highlighted, label: Highlight this tier, widget: boolean, default: false }
+      - name: faq
+        label: Questions
+        widget: list
+        required: false
+        collapsed: true
+        label_singular: Question
+        summary: '{{fields.question}}'
+        fields:
+          - { name: question, label: Question, widget: string }
+          - { name: answer, label: Answer, widget: text }
+      - name: links
+        label: External links
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: website, label: Product website, widget: string, required: false }
+          - { name: demo, label: Demo URL, widget: string, required: false }
+          - { name: appStore, label: App Store URL, widget: string, required: false }
+          - { name: playStore, label: Google Play URL, widget: string, required: false }
+      - name: ctaLabel
+        label: Call-to-action label
+        widget: string
+        required: false
+        hint: Overrides the default "Talk to us about <product>" button.
+      - { name: draft, label: Draft, widget: boolean, default: false }
+      - name: seo
+        label: SEO overrides
+        widget: object
+        collapsed: true
+        required: false
+        fields:
+          - { name: title, label: Title override, widget: string, required: false }
+          - { name: description, label: Description override, widget: text, required: false }
+          - { name: noindex, label: Hide from search engines, widget: boolean, default: false }
+      - { name: body, label: Page content, widget: markdown }
+
+  # ---------------------------------------------------------------
+  # Team -- shown on /about
+  # ---------------------------------------------------------------
+  - name: team
+    label: Team
+    label_singular: Person
+    folder: src/content/team
+    create: true
+    slug: '{{slug}}'
+    extension: md
+    format: frontmatter
+    identifier_field: name
+    summary: '{{name}} — {{role}}'
+    sortable_fields: ['order', 'name']
+    fields:
+      - { name: name, label: Name, widget: string }
+      - { name: role, label: Role, widget: string }
+      - { name: summary, label: One-line summary, widget: string }
+      - name: order
+        label: Sort order
+        widget: number
+        value_type: int
+        default: 100
+      - name: links
+        label: Links
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: linkedin, label: LinkedIn URL, widget: string, required: false }
+          - { name: github, label: GitHub URL, widget: string, required: false }
+          - { name: email, label: Email, widget: string, required: false }
+      - { name: draft, label: Draft, widget: boolean, default: false }
+      - { name: body, label: Bio, widget: markdown }
+
+  # ---------------------------------------------------------------
+  # Pages
+  # ---------------------------------------------------------------
+  - name: pages
+    label: Pages
+    label_singular: Page
+    folder: src/content/pages
+    create: true
+    slug: '{{slug}}'
+    extension: md
+    format: frontmatter
+    identifier_field: title
+    summary: '{{title}}'
+    fields:
+      - { name: title, label: Title, widget: string }
+      - name: summary
+        label: Summary
+        widget: text
+        hint: Shown under the heading and used as the search-engine description.
+      - { name: draft, label: Draft, widget: boolean, default: false }
+      - name: seo
+        label: SEO overrides
+        widget: object
+        collapsed: true
+        required: false
+        fields:
+          - { name: title, label: Title override, widget: string, required: false }
+          - { name: description, label: Description override, widget: text, required: false }
+          - { name: noindex, label: Hide from search engines, widget: boolean, default: false }
+      - { name: body, label: Content, widget: markdown }
+
+  # ---------------------------------------------------------------
+  # News
+  # ---------------------------------------------------------------
+  - name: news
+    label: News
+    label_singular: Post
+    folder: src/content/news
+    create: true
+    slug: '{{year}}-{{month}}-{{day}}-{{slug}}'
+    extension: md
+    format: frontmatter
+    identifier_field: title
+    summary: '{{date}} — {{title}}'
+    sortable_fields: ['date', 'title']
+    view_filters:
+      - { label: Drafts, field: draft, pattern: true }
+    fields:
+      - { name: title, label: Title, widget: string }
+      - name: date
+        label: Publish date
+        widget: datetime
+        date_format: YYYY-MM-DD
+        time_format: false
+        picker_utc: true
+      - { name: summary, label: Summary, widget: text }
+      - { name: author, label: Author, widget: string, required: false }
+      - name: image
+        label: Image
+        widget: object
+        required: false
+        collapsed: true
+        fields:
+          - { name: src, label: File, widget: image }
+          - { name: alt, label: Alt text, widget: string }
+      - { name: draft, label: Draft, widget: boolean, default: false }
+      - name: seo
+        label: SEO overrides
+        widget: object
+        collapsed: true
+        required: false
+        fields:
+          - { name: title, label: Title override, widget: string, required: false }
+          - { name: description, label: Description override, widget: text, required: false }
+          - { name: noindex, label: Hide from search engines, widget: boolean, default: false }
+      - { name: body, label: Content, widget: markdown }
+
+  # ---------------------------------------------------------------
+  # Site settings
+  # ---------------------------------------------------------------
+  - name: settings
+    label: Site settings
+    files:
+      - name: site
+        label: Company details
+        file: src/data/site.json
+        description: >-
+          Name, tagline, contact details and social links. These appear in the
+          header, footer, contact page and search-engine listings.
+        fields:
+          - { name: name, label: Company name, widget: string }
+          - { name: shortName, label: Short name, widget: string }
+          - name: tagline
+            label: Tagline
+            widget: string
+            hint: One short line. Used as the home-page headline.
+          - name: description
+            label: Description
+            widget: text
+            hint: Two sentences. Used by Google and for social sharing previews.
+          - name: url
+            label: Site URL
+            widget: string
+            pattern: ['^https://', 'Must start with https://']
+          - { name: locale, label: Locale, widget: string, default: en_US }
+          - { name: email, label: Email, widget: string }
+          - { name: phone, label: Phone, widget: string, required: false }
+          - name: address
+            label: Address
+            widget: object
+            collapsed: true
+            fields:
+              - { name: street, label: Street, widget: string, required: false }
+              - { name: city, label: City, widget: string, required: false }
+              - { name: region, label: State / region, widget: string, required: false }
+              - { name: postalCode, label: Postal code, widget: string, required: false }
+              - { name: country, label: Country code, widget: string, default: US, required: false }
+          - name: social
+            label: Social links
+            widget: object
+            collapsed: true
+            fields:
+              - { name: linkedin, label: LinkedIn URL, widget: string, required: false }
+              - { name: github, label: GitHub URL, widget: string, required: false }
+              - { name: x, label: X URL, widget: string, required: false }
+              - { name: youtube, label: YouTube URL, widget: string, required: false }
+          - name: organizationType
+            label: Organization type
+            widget: select
+            options: ['Organization', 'Corporation', 'LocalBusiness']
+            default: Organization
+          - { name: founded, label: Founded, widget: string, required: false }
+          - { name: ein, label: Registration number, widget: string, required: false }
