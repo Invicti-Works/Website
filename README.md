@@ -12,9 +12,13 @@ applications. Built with [Astro](https://astro.build), edited through
 
 ## What the site is
 
-Two public pages. The home page says what we engineer, carries the "Find your
+Two public pages. The home page says what we engineer -- mobile and web
+applications, for individuals and organizations alike -- carries the "Find your
 solution" enquiry form, and ends with the founder bios. `/contact` is a
 paragraph and an email address.
+
+The header is the logo alone. Both calls to action live in the hero, and the
+footer carries the full list of destinations.
 
 `/marketplace` is a third page that **does not exist until it has something to
 sell.** It is built only when the `apps` collection has a published entry, so
