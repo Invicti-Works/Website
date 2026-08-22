@@ -24,6 +24,8 @@ const bios = await Promise.all(
     </div>
   </section>
 
+  <SolutionFinder />
+
   {
     bios.length > 0 && (
       <section class="section" aria-labelledby="founders-heading">
@@ -60,8 +62,6 @@ const bios = await Promise.all(
       </section>
     )
   }
-
-  <SolutionFinder />
 </BaseLayout>
 
 <style>
@@ -69,7 +69,15 @@ const bios = await Promise.all(
     padding-block: var(--space-2xl);
   }
 
+  /* `.container` sets max-width:72rem AND margin-inline:auto. Narrowing this
+     box to the text measure therefore centred it, leaving the hero copy adrift
+     of the header logo. Keep the box at container width so its left edge lines
+     up, and hold the measure on the children instead. */
   .hero__inner {
+    max-width: var(--container);
+  }
+
+  .hero__inner > * {
     max-width: 46rem;
   }
 
