@@ -103,6 +103,17 @@ const getDomainPatterns = (allowedDomains) =>
 const serialize = (value) => JSON.stringify(value ?? null).replaceAll('<', '\\u003c');
 
 /**
+ * Escape text for embedding in HTML. LOCAL ADDITION: upstream renders an empty
+ * body, so a popup that fails to complete shows a blank white page and there is
+ * nothing to report. See the body markup in {@link outputHTML}.
+ */
+const escapeHTML = (value) =>
+  String(value).replace(
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+  );
+
+/**
  * Output HTML response that communicates with the window opener.
  * @param {object} args - Options.
  * @param {string} [args.provider] - Backend name, e,g. `github`.
@@ -119,7 +130,32 @@ const outputHTML = ({ provider = 'unknown', token, error, errorCode, env = {} })
 
   return new Response(
     `
-      <!doctype html><html><body><script>
+      <!doctype html><html lang="en"><head><meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Signing in\u2026</title>
+      <style>
+        body{font:15px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+             margin:0;min-height:100vh;display:grid;place-items:center;padding:1.5rem;
+             background:#f4f6f9;color:#12161d}
+        main{max-width:30rem}
+        h1{color:#003870;font-size:1.25rem;margin:0 0 .5rem}
+        code{background:#e7ecf3;padding:.1rem .3rem;border-radius:.2rem}
+        .muted{color:#47505e;font-size:.9em}
+      </style></head><body>
+      <main>
+        <h1>${error ? 'Sign-in failed' : 'Signing you in\u2026'}</h1>
+        <p>${
+          error
+            ? escapeHTML(error) + (errorCode ? ` <code>${escapeHTML(errorCode)}</code>` : '')
+            : 'This window closes itself once the CMS has the token.'
+        }</p>
+        <p class="muted">
+          LOCAL ADDITION, not upstream: this text exists so a popup that does not
+          complete says why. If this window is still here, the CMS never received
+          the handover \u2014 note what it says and check the Worker logs.
+        </p>
+      </main>
+      <script>
         (() => {
           const trustedPatterns = ${serialize(getDomainPatterns(env.ALLOWED_DOMAINS))};
           const hasToken = ${serialize(!!token)};
@@ -173,7 +209,7 @@ const outputHTML = ({ provider = 'unknown', token, error, errorCode, env = {} })
           });
           window.opener?.postMessage('authorizing:${provider}', '*');
         })();
-      </script></body></html>
+      <\/script></body></html>
     `,
     {
       headers: {
