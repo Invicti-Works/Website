@@ -143,7 +143,26 @@ const outputHTML = ({ provider = 'unknown', token, error, errorCode, env = {} })
             // event is set by the browser and cannot be forged by the sender, so it’s the only
             // reliable indication of who opened this popup. An error carries no secret, so it’s
             // always passed through to keep the sign-in screen informative
+            //
+            // LOCAL CHANGE (not upstream): upstream returns silently here, which is the one
+            // path in this flow that produces no message at all -- the popup just closes and
+            // the CMS sits there, with nothing to debug from. Withholding the *token* is the
+            // security control and is unchanged; sending an error in its place is what this
+            // file already says it does everywhere else, since an error carries no secret.
             if (hasToken && trustedPatterns.length && !isTrusted(origin)) {
+              window.opener?.postMessage(
+                'authorization:${provider}:error:' +
+                  JSON.stringify({
+                    provider: '${provider}',
+                    error:
+                      'This page\\'s origin (' + origin + ') is not listed in ALLOWED_DOMAINS ' +
+                      'on the Worker, so the sign-in token was withheld. Add this hostname, ' +
+                      'or open the site on a hostname that is already listed.',
+                    errorCode: 'UNSUPPORTED_DOMAIN',
+                  }),
+                origin
+              );
+
               return;
             }
 

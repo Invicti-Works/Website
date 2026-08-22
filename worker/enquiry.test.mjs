@@ -69,5 +69,27 @@ const payload = JSON.parse(sent.init.body);
 console.log(`${payload.reply_to === valid.email ? 'PASS' : 'FAIL'}  reply_to is the enquirer`);
 if (payload.reply_to !== valid.email) failures++;
 
+// The Worker entry point must accept the trailing-slash form of each route:
+// the asset layer's auto-trailing-slash handling means either can reach us, and
+// a missed OAuth path lands on the 404 page inside the sign-in popup.
+const { default: workerEntry } = await import('./index.js');
+const assets = { fetch: async () => new Response('asset', { status: 200 }) };
+
+for (const path of ['/api/enquiry', '/api/enquiry/']) {
+  const res = await workerEntry.fetch(
+    new Request(`https://invicti.works${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify(valid),
+    }),
+    { ASSETS: assets },
+  );
+  // 503 means the enquiry handler ran (no API key); 200 would mean it fell
+  // through to the asset stub instead, which is the bug this guards against.
+  const ok = res.status === 503;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  routed ${path.padEnd(15)} got ${res.status} want 503`);
+  if (!ok) failures++;
+}
+
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
 process.exit(failures === 0 ? 0 : 1);

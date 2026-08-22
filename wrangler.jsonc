@@ -22,7 +22,14 @@
     "binding": "ASSETS",
     // Only these paths invoke the Worker before assets are checked, so
     // ordinary page and image requests stay on the free, unmetered tier.
-    "run_worker_first": ["/oauth/authorize", "/oauth/redirect", "/api/enquiry"]
+    //
+    // Globs rather than the three exact paths. Nothing is built into dist/
+    // under either prefix, so this widens the Worker's reach by nothing at
+    // all -- but an exact pattern misses any variant the browser or the asset
+    // layer produces, a trailing slash above all. A missed OAuth path falls
+    // through to the 404 page inside the sign-in popup, which posts nothing
+    // back and is indistinguishable from the sign-in silently failing.
+    "run_worker_first": ["/oauth/*", "/api/*"]
   },
 
   // Keeps <name>.<subdomain>.workers.dev serving, and restores per-branch and
