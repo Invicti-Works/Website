@@ -23,11 +23,17 @@ export default {
   async fetch(request, env, ctx) {
     const { pathname } = new URL(request.url);
 
-    if (AUTH_PATHS.has(pathname)) {
+    // Match `/oauth/authorize` and `/oauth/authorize/` alike. The asset layer's
+    // `auto-trailing-slash` handling means either form can reach us, and an
+    // unmatched OAuth path would fall through to the 404 page inside the
+    // sign-in popup -- which looks like sign-in doing nothing at all.
+    const route = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+
+    if (AUTH_PATHS.has(route)) {
       return cmsAuth.fetch(request, env, ctx);
     }
 
-    if (pathname === ENQUIRY_PATH) {
+    if (route === ENQUIRY_PATH) {
       return handleEnquiry(request, env);
     }
 
