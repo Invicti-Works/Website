@@ -571,6 +571,118 @@ saying so, and saying the conversation is processed by Anthropic. Before
 short `/privacy` page covering what is stored, who processes it, and how long
 it is kept — and link it from that note.
 
+---
+
+## 13. The founders' console (`/console`)
+
+Where you and Josh read the briefs the problem solver collected and hand one to
+Claude Code to build. Nothing here is public: it sits behind the same Cloudflare
+Access sign-in that already protects `/admin`.
+
+Safe to deploy before any of this. Until Access is configured the API answers
+403 to everything and the page shows a sign-in message — it fails closed.
+
+### 13a. Put the console behind Access
+
+Cloudflare dashboard → **Zero Trust** → **Access** → **Applications**. Either
+add the paths to the existing `/admin` application or make a second one:
+
+1. Application type **Self-hosted**.
+2. Domain `invicti.works`, and add **two** paths: `console` and `api/console`.
+   Both. Protecting only the page would leave the API — which is where the
+   actual briefs are — open to anyone who guessed the URL.
+3. Policy: **Allow**, include → **Emails** → your address and Josh's.
+4. Identity: **One-time PIN** is enough and needs no extra setup.
+
+Then open the application's **Overview** tab and copy two values into
+`wrangler.jsonc`:
+
+- `ACCESS_TEAM_DOMAIN` — your team domain, e.g. `invicti.cloudflareaccess.com`
+- `ACCESS_AUD` — the **Application Audience (AUD) tag**
+
+Neither is a secret. The AUD tag names which application an assertion was minted
+for; the thing that actually proves an assertion is genuine is its RSA
+signature, which the Worker verifies against Cloudflare's published keys on
+every request. That second check is why a mistake in step 2 above cannot quietly
+expose the briefs.
+
+Free for up to 50 users.
+
+### 13b. Create the build repo
+
+```
+gh repo create Invicti-Works/toolforge --private
+```
+
+**Private, and check that it is.** Briefs contain a stranger's business detail
+and their email address, and the website repo is public. `npm test` fails if
+`TOOLFORGE_REPO` ever points back at this one.
+
+### 13c. The GitHub App
+
+Organization **Settings → Developer settings → GitHub Apps → New GitHub App**.
+
+1. Name it something like `Invicti Console`. Homepage `https://invicti.works`.
+   Uncheck **Webhook → Active** — the console polls, it does not receive.
+2. Repository permissions: **Contents** read and write, **Issues** read and
+   write, **Pull requests** read and write, **Actions** read and write.
+   Nothing else.
+3. Create it, then **Install App** → *Only select repositories* → `toolforge`.
+4. From the app's settings page take the **App ID** → `GH_APP_ID` in
+   `wrangler.jsonc`. From the installation's URL
+   (`.../settings/installations/<number>`) take the number →
+   `GH_APP_INSTALLATION_ID`.
+5. **Generate a private key.** It downloads as PKCS#1, and Workers only reads
+   PKCS#8, so convert it:
+
+   ```
+   openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in downloaded.pem -out app-pkcs8.pem
+   ```
+
+   Paste the contents of `app-pkcs8.pem` — including the BEGIN and END lines —
+   into the Worker as encrypted `GH_APP_PRIVATE_KEY`. Skip the conversion and
+   the console reports it rather than failing with an opaque crypto error, but
+   it still will not work.
+
+Delete the downloaded `.pem` files afterwards. That key is the keys to the org.
+
+**Why a GitHub App and not a token.** It is scoped to one repository rather
+than to everything a human can reach, it is revocable without touching anyone's
+personal account, and the audit trail says the app did it. The OAuth app in step
+5 is a different thing — that one signs CMS editors in to this repo.
+
+### 13d. Optional: unattended builds
+
+If you want Claude to take a first pass without you opening it, add
+`ANTHROPIC_API_KEY` as a secret in `toolforge` and put the Claude Code GitHub
+Action in its workflows. Without that, "Start build" still opens the branch, the
+spec and the issue — you just pick it up in Claude Code yourself, which runs on
+your own seat rather than on API credit.
+
+### 13e. What "Start build" does
+
+1. Renders the brief as a Markdown spec — the readable summary, the open
+   questions to ask before writing code, the ground rules, then the raw JSON.
+2. In `toolforge`: branches `tool/<slug>` off the default branch, commits
+   `briefs/<id>.md`, and opens an issue holding the same spec.
+3. Moves the brief to `queued` and remembers the issue URL.
+4. Gives you two buttons: **Open the issue**, and **Open in Claude Code** —
+   a deep link to that repo and branch, running under your own Claude seat.
+
+Pressing it twice does not open a second branch. If GitHub fails, nothing is
+changed and it is safe to press again.
+
+### 13f. Check it
+
+1. Open `/console` in a private window. You should get the Access PIN
+   challenge, and the brief list after signing in.
+2. `curl -s -o /dev/null -w '%{http_code}\n' https://invicti.works/api/console/briefs`
+   → **403**. If that returns 200 or an HTML page, stop and fix step 13a before
+   putting anything real through the intake.
+3. Start a build on a test brief and confirm the branch, `briefs/<id>.md` and
+   the issue all appear in `toolforge` — and that they appear *there* and not
+   in this repo.
+
 ## Costs
 
 | Item | Cost |

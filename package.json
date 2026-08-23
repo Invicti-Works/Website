@@ -16,7 +16,7 @@
     "check": "astro check",
     "deploy": "npm run build && wrangler deploy",
     "cf:preview": "npm run build && wrangler dev",
-    "test": "node worker/contact.test.mjs && node worker/intake.test.mjs",
+    "test": "node worker/contact.test.mjs && node worker/intake.test.mjs && node worker/console.test.mjs",
     "db:migrate": "wrangler d1 migrations apply invicti-briefs --remote",
     "db:migrate:local": "wrangler d1 migrations apply invicti-briefs --local"
   },

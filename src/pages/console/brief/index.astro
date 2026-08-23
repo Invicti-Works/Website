@@ -1,0 +1,257 @@
+---
+import PageLayout from '../../../layouts/PageLayout.astro';
+
+/**
+ * /console/brief/?id=… — one brief, and the buttons that start work on it.
+ *
+ * A query parameter rather than a dynamic route, because the ids only exist in
+ * D1 and this site builds statically: `getStaticPaths` cannot know them, and a
+ * route it cannot enumerate is a route it cannot emit.
+ *
+ * Same shell-plus-fetch shape as the list, and the same two gates: Cloudflare
+ * Access at the edge, and the assertion re-checked in worker/lib/access.js.
+ */
+---
+
+<PageLayout title="Brief" summary="What the problem solver captured, and what to do about it." noindex>
+  <p><a href="/console/">← All briefs</a></p>
+
+  <p class="form-status" id="status" role="status" aria-live="polite">Loading…</p>
+
+  <article id="brief" hidden>
+    <header class="brief-head">
+      <h2 id="headline"></h2>
+      <p class="muted" id="meta"></p>
+      <p class="brief-actions">
+        <button class="button" type="button" id="start-build">Start build</button>
+        <a class="button button--secondary" id="issue-link" hidden rel="noopener">Open the issue</a>
+        <a class="button button--secondary" id="claude-link" hidden rel="noopener">Open in Claude Code</a>
+      </p>
+      <div class="field brief-state">
+        <label for="state">State</label>
+        <select id="state">
+          <option value="new">New</option>
+          <option value="review">In review</option>
+          <option value="published">Published</option>
+          <option value="declined">Declined</option>
+        </select>
+      </div>
+    </header>
+
+    <pre class="brief-body" id="body"></pre>
+
+    <details class="brief-raw">
+      <summary>The brief as data</summary>
+      <pre id="raw"></pre>
+    </details>
+  </article>
+</PageLayout>
+
+<script is:inline>
+  (() => {
+    const status = document.getElementById('status');
+    const article = document.getElementById('brief');
+    const headline = document.getElementById('headline');
+    const meta = document.getElementById('meta');
+    const body = document.getElementById('body');
+    const raw = document.getElementById('raw');
+    const startBuild = document.getElementById('start-build');
+    const issueLink = document.getElementById('issue-link');
+    const claudeLink = document.getElementById('claude-link');
+    const stateSelect = document.getElementById('state');
+
+    const id = new URLSearchParams(location.search).get('id');
+
+    const setStatus = (text, kind) => {
+      status.textContent = text;
+      if (kind) status.dataset.kind = kind;
+      else delete status.dataset.kind;
+    };
+
+    if (!id) {
+      setStatus('No brief id in the address.', 'error');
+      return;
+    }
+
+    /**
+     * Render the brief as indented text rather than a table of fields. It is a
+     * deep, sparse object and most of it is empty on most briefs; a flat
+     * readable dump beats forty rows of em dashes.
+     */
+    const draw = (value, depth = 0) => {
+      const pad = '  '.repeat(depth);
+      if (value === null || value === undefined || value === '') return null;
+
+      if (Array.isArray(value)) {
+        if (!value.length) return null;
+        return value
+          .map((item) =>
+            typeof item === 'object' && item !== null
+              ? `${pad}-\n${draw(item, depth + 1)}`
+              : `${pad}- ${item}`,
+          )
+          .filter(Boolean)
+          .join('\n');
+      }
+
+      if (typeof value === 'object') {
+        const parts = Object.entries(value)
+          .map(([key, child]) => {
+            const drawn = draw(child, depth + 1);
+            if (drawn === null) return null;
+            const label = key.replace(/([A-Z])/g, ' $1').toLowerCase();
+            return typeof child === 'object' && child !== null
+              ? `${pad}${label}:\n${drawn}`
+              : `${pad}${label}: ${child}`;
+          })
+          .filter(Boolean);
+        return parts.length ? parts.join('\n') : null;
+      }
+
+      return `${pad}${value}`;
+    };
+
+    const showLinks = (record, extra = {}) => {
+      const issueUrl = extra.issueUrl ?? record.build_ref;
+      if (issueUrl) {
+        issueLink.href = issueUrl;
+        issueLink.hidden = false;
+      }
+      if (extra.claudeCodeUrl) {
+        claudeLink.href = extra.claudeCodeUrl;
+        claudeLink.hidden = false;
+      }
+      // Once work is open, the primary action is to go and do it.
+      if (issueUrl) startBuild.textContent = 'Build already started';
+      startBuild.disabled = Boolean(issueUrl);
+    };
+
+    (async () => {
+      try {
+        const response = await fetch(`/api/console/briefs/${encodeURIComponent(id)}`, {
+          headers: { accept: 'application/json' },
+        });
+
+        if (response.status === 403) {
+          setStatus('Not signed in, or Access is not set up for this path yet.', 'error');
+          return;
+        }
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          setStatus(payload.error ?? `Could not load that brief (${response.status}).`, 'error');
+          return;
+        }
+
+        const { brief: record } = await response.json();
+        headline.textContent = record.headline || '(no headline captured)';
+        meta.textContent = [
+          [record.name, record.organization].filter(Boolean).join(' · '),
+          record.email,
+          `${record.completeness ?? 0}% complete`,
+          record.complexity,
+          new Date(record.created_at).toLocaleString(),
+        ]
+          .filter(Boolean)
+          .join(' — ');
+
+        body.textContent = draw(record.brief) ?? 'Nothing was captured.';
+        raw.textContent = JSON.stringify(record.brief, null, 2);
+        stateSelect.value = record.build_state ?? 'new';
+        showLinks(record);
+
+        article.hidden = false;
+        setStatus('', null);
+
+        startBuild.addEventListener('click', async () => {
+          startBuild.disabled = true;
+          setStatus('Opening the work on GitHub…', 'pending');
+          try {
+            const r = await fetch(`/api/console/briefs/${encodeURIComponent(id)}/build`, {
+              method: 'POST',
+              headers: { accept: 'application/json' },
+            });
+            const payload = await r.json().catch(() => ({}));
+
+            if (!r.ok) {
+              setStatus(payload.error ?? `Could not start the build (${r.status}).`, 'error');
+              startBuild.disabled = false;
+              return;
+            }
+
+            showLinks(record, payload);
+            stateSelect.value = 'new';
+            setStatus(
+              payload.alreadyStarted
+                ? 'This one was already started — the links are below.'
+                : `Branch ${payload.branch} and issue #${payload.issueNumber} are open.`,
+              'ok',
+            );
+          } catch {
+            setStatus('Could not reach the console API.', 'error');
+            startBuild.disabled = false;
+          }
+        });
+
+        stateSelect.addEventListener('change', async () => {
+          const state = stateSelect.value;
+          try {
+            const r = await fetch(`/api/console/briefs/${encodeURIComponent(id)}/state`, {
+              method: 'PATCH',
+              headers: { accept: 'application/json', 'content-type': 'application/json' },
+              body: JSON.stringify({ state }),
+            });
+            const payload = await r.json().catch(() => ({}));
+            setStatus(r.ok ? `Marked ${state}.` : payload.error ?? 'Could not change the state.', r.ok ? 'ok' : 'error');
+          } catch {
+            setStatus('Could not reach the console API.', 'error');
+          }
+        });
+      } catch {
+        setStatus('Could not reach the console API.', 'error');
+      }
+    })();
+  })();
+</script>
+
+<style>
+  .brief-head {
+    padding-block-end: var(--space-lg);
+    border-block-end: 1px solid var(--color-border);
+    margin-block-end: var(--space-lg);
+  }
+
+  .brief-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-sm);
+    margin-block: var(--space-md);
+  }
+
+  .brief-state {
+    max-width: 14rem;
+  }
+
+  .brief-body,
+  .brief-raw pre {
+    white-space: pre-wrap;
+    /* Long unbroken values -- a pasted URL, a spreadsheet name -- must wrap
+       rather than push the page sideways. */
+    overflow-wrap: anywhere;
+    font-size: var(--step--1);
+    line-height: 1.6;
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: var(--space-md);
+  }
+
+  .brief-raw {
+    margin-block-start: var(--space-lg);
+  }
+
+  .brief-raw summary {
+    cursor: pointer;
+    font-weight: 600;
+    padding-block: var(--space-2xs);
+  }
+</style>

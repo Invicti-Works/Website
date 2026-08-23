@@ -72,11 +72,13 @@ src/
   data/intake.json  Public config for /build -- Turnstile site key, copy
   layouts/          BaseLayout (html shell + SEO), PageLayout (title + body)
   components/       Header, Footer, Logo, Seo, SolutionFinder, ToolBrief
-  pages/            Routes -- including build.astro, the AI problem solver
+  pages/            Routes -- build.astro (the problem solver) and
+                    console/ (the founders' dashboard, Access-gated)
   lib/content.ts    Collection queries, sorting, draft filtering
   styles/global.css Design tokens, base styles, form fields, marketing components
 worker/
-  index.js          Worker entry: OAuth, /api/contact, /api/intake, else assets
+  index.js          Worker entry: OAuth, /api/contact, /api/intake,
+                    /api/console/*, else back to assets
   cms-auth.js       GitHub OAuth flow, vendored from sveltia-cms-auth (MIT)
   contact.js        The "Find your solution" form handler
   intake.js         The /build conversation: one model call per turn
@@ -84,8 +86,11 @@ worker/
   intake-store.js   D1 persistence, plus an in-memory sibling for the tests
   brief-schema.js   The build brief: schema, validator, connector catalog,
                     and the no-JS form -- shared by the Worker and Astro
-  lib/http.js       JSON-or-HTML replies, shared by both API routes
-  lib/email.js      Resend, shared by both API routes
+  console.js        The founders' dashboard API, behind Cloudflare Access
+  lib/access.js     Access assertion verification -- fails closed, by design
+  lib/github.js     The GitHub App that opens build work in the private repo
+  lib/http.js       JSON-or-HTML replies, shared by the API routes
+  lib/email.js      Resend, shared by the API routes
   *.test.mjs        Tests -- `npm test`, and CI runs them
 migrations/         D1 schema. NOT applied by deploy -- `npm run db:migrate`
 public/             Derived web assets, CMS, uploads
@@ -94,6 +99,28 @@ wrangler.jsonc      Cloudflare deployment config
 
 ## Notes for whoever works on this next
 
+- **The console fails closed; the intake fails open. That asymmetry is on
+  purpose.** `worker/lib/access.js` rejects everything when `ACCESS_TEAM_DOMAIN`
+  or `ACCESS_AUD` is unset, because the worst case behind `/console` is
+  publishing a stranger's business briefs. The Turnstile check in
+  `worker/intake.js` does the opposite and lets requests through when
+  unconfigured, because the worst case there is a bot wasting a few tokens.
+  Don't "fix" either one to match the other.
+- **Cloudflare Access must cover `api/console` as well as `console`.** Gating
+  only the page leaves the API — which is where the briefs actually are — open
+  to anyone who guesses the URL. The Worker re-verifies the assertion anyway, so
+  a mistake here is caught rather than fatal; that is the whole reason the
+  second check exists.
+- **Build specs go to a private repo. This one is public.** `TOOLFORGE_REPO`
+  must never point back at `Invicti-Works/Website`, and `npm test` fails if it
+  does.
+- **`GH_APP_PRIVATE_KEY` is PKCS#8, not the PKCS#1 GitHub hands you.** Convert
+  it with `openssl pkcs8 -topk8 -nocrypt` (docs/SETUP.md 13c). `worker/lib/github.js`
+  detects the wrong format and says so, because otherwise this surfaces as an
+  opaque `DataError` long after anyone remembers the format mattered.
+- **`/console/brief/` takes its id from a query parameter, not a route.** Ids
+  only exist in D1 and the site builds statically, so `getStaticPaths` cannot
+  enumerate them.
 - **D1 migrations are not applied by deploying.** Neither `wrangler deploy` nor
   Workers Builds runs them. Code that expects a table an un-migrated database
   does not have fails at *runtime*, in front of a visitor, rather than at deploy
