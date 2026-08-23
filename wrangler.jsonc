@@ -78,12 +78,15 @@
   //
   // A GitHub OAuth client ID is public by design: it is sent in the authorize
   // URL and visible to anyone who signs in. Only the secret is a secret.
-  // Secrets referenced by worker/intake.js and set in the dashboard, encrypted:
+  // Secrets set in the dashboard, encrypted, and referenced by the Worker:
   //   ANTHROPIC_API_KEY     absent -> /api/intake returns 503 and /build shows
   //                         the plain form. Safe to ship before it exists.
   //   TURNSTILE_SECRET_KEY  absent -> the bot check is skipped; the honeypot,
   //                         the per-IP count and the daily fuse still hold.
   //   INTAKE_SALT           absent -> no IP is hashed and none is stored.
+  //   GH_APP_PRIVATE_KEY    absent -> "Start build" answers 503; the rest of
+  //                         the console still works. PKCS#8 PEM, not PKCS#1 --
+  //                         worker/lib/github.js says how to convert it.
   "vars": {
     // OAuth App client ID. Public by design -- GitHub puts it in the authorize
     // URL, so every visitor who signs in already sees it. The matching secret
@@ -109,7 +112,30 @@
     // bugs.
     "INTAKE_DAILY_BUDGET_CENTS": "100",
     "BRIEF_TO": "info@invicti.works",
-    "BRIEF_FROM": "Invicti.Works <briefs@invicti.works>"
+    "BRIEF_FROM": "Invicti.Works <briefs@invicti.works>",
+
+    // The founders' console at /console.
+    //
+    // Both Access values are public identifiers -- the AUD tag is not a
+    // password, it names which application an assertion was minted for. The
+    // check that matters is the RSA signature, verified in worker/lib/access.js
+    // against Cloudflare's published keys.
+    //
+    // Empty means the console FAILS CLOSED: /api/console answers 403 to
+    // everything. That is the opposite of the Turnstile behaviour above, and
+    // deliberate -- an unconfigured bot check wastes a few tokens, while an
+    // unconfigured door on this one would publish other people's briefs.
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+
+    // The GitHub App that opens build work. Both are identifiers, not secrets;
+    // the private key is GH_APP_PRIVATE_KEY and lives encrypted in the
+    // dashboard. See docs/SETUP.md step 13.
+    "GH_APP_ID": "",
+    "GH_APP_INSTALLATION_ID": "",
+    // PRIVATE repo. Briefs contain a stranger's business detail and their
+    // email address, and this repo is public.
+    "TOOLFORGE_REPO": "Invicti-Works/toolforge"
   },
 
   // Briefs, transcripts and the daily spend counter.

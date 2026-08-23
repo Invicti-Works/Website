@@ -137,6 +137,11 @@ for (const key of [
   'INTAKE_DAILY_BUDGET_CENTS',
   'BRIEF_TO',
   'BRIEF_FROM',
+  'ACCESS_TEAM_DOMAIN',
+  'ACCESS_AUD',
+  'GH_APP_ID',
+  'GH_APP_INSTALLATION_ID',
+  'TOOLFORGE_REPO',
 ]) {
   const present = new RegExp(`"${key}"\\s*:`).test(wrangler);
   console.log(`${present ? 'PASS' : 'FAIL'}  wrangler.jsonc declares ${key}`);
@@ -150,10 +155,20 @@ for (const key of [
   'ANTHROPIC_API_KEY',
   'TURNSTILE_SECRET_KEY',
   'INTAKE_SALT',
+  'GH_APP_PRIVATE_KEY',
 ]) {
   const leaked = new RegExp(`"${key}"\\s*:`).test(wrangler);
   console.log(`${leaked ? 'FAIL' : 'PASS'}  wrangler.jsonc does NOT contain ${key}`);
   if (leaked) failures++;
+}
+
+// Briefs are confidential and this repo is public, so the build specs must go
+// somewhere else. Getting this wrong publishes a stranger's business problems.
+{
+  const target = wrangler.match(/"TOOLFORGE_REPO"\s*:\s*"([^"]*)"/)?.[1] ?? '';
+  const safe = target !== '' && !/\/website$/i.test(target);
+  console.log(`${safe ? 'PASS' : 'FAIL'}  TOOLFORGE_REPO is not this repo  (${target || 'empty'})`);
+  if (!safe) failures++;
 }
 
 // D1 backs the intake route. Two ways to get this wrong, and only one of them

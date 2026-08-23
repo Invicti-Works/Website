@@ -148,6 +148,57 @@ export function d1Store(db) {
         .first();
       return row?.n ?? 0;
     },
+
+    /* ---- read side, for the founders' console (worker/console.js) ---- */
+
+    /**
+     * The list view. Deliberately does NOT select brief_json: the console shows
+     * twenty rows at a time and each brief is several kilobytes of JSON, so
+     * sending them all would make the list slow for data nothing renders.
+     */
+    async listBriefs({ limit = 50, state = null } = {}) {
+      const query = state
+        ? db
+            .prepare(
+              `SELECT id, created_at, email, name, organization, headline, complexity,
+                      completeness, emailed_at, build_state, build_ref
+                 FROM briefs WHERE build_state = ? ORDER BY created_at DESC LIMIT ?`,
+            )
+            .bind(state, limit)
+        : db
+            .prepare(
+              `SELECT id, created_at, email, name, organization, headline, complexity,
+                      completeness, emailed_at, build_state, build_ref
+                 FROM briefs ORDER BY created_at DESC LIMIT ?`,
+            )
+            .bind(limit);
+
+      const { results } = await query.all();
+      return results ?? [];
+    },
+
+    async getBrief(id) {
+      const row = await db.prepare(`SELECT * FROM briefs WHERE id = ?`).bind(id).first();
+      if (!row) return null;
+      return { ...row, brief: JSON.parse(row.brief_json) };
+    },
+
+    async setBuildState(id, state, ref = null) {
+      await db
+        .prepare(
+          `UPDATE briefs SET build_state = ?, build_ref = COALESCE(?, build_ref) WHERE id = ?`,
+        )
+        .bind(state, ref, id)
+        .run();
+    },
+
+    /** Counts by state, for the header on the list page. */
+    async briefCounts() {
+      const { results } = await db
+        .prepare(`SELECT build_state, COUNT(*) AS n FROM briefs GROUP BY build_state`)
+        .all();
+      return Object.fromEntries((results ?? []).map((r) => [r.build_state, r.n]));
+    },
   };
 }
 
@@ -231,6 +282,35 @@ export function memoryStore() {
     async countRecentSessions(ipHash) {
       if (!ipHash) return 0;
       return [...sessions.values()].filter((s) => s.ipHash === ipHash).length;
+    },
+
+    async listBriefs({ limit = 50, state = null } = {}) {
+      return briefs
+        .filter((b) => !state || (b.build_state ?? 'new') === state)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, limit)
+        .map(({ json, ...rest }) => ({ ...rest, build_state: rest.build_state ?? 'new' }));
+    },
+
+    async getBrief(id) {
+      const found = briefs.find((b) => b.id === id);
+      return found ? { ...found, brief: found.json, build_state: found.build_state ?? 'new' } : null;
+    },
+
+    async setBuildState(id, state, ref = null) {
+      const found = briefs.find((b) => b.id === id);
+      if (!found) return;
+      found.build_state = state;
+      if (ref) found.build_ref = ref;
+    },
+
+    async briefCounts() {
+      const counts = {};
+      for (const b of briefs) {
+        const state = b.build_state ?? 'new';
+        counts[state] = (counts[state] ?? 0) + 1;
+      }
+      return counts;
     },
   };
 }
