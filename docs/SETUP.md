@@ -491,9 +491,17 @@ never stored. With no salt set, no IP is hashed and no per-IP counting happens
 npx wrangler d1 create invicti-briefs
 ```
 
-Copy the `database_id` it prints into `wrangler.jsonc` under `d1_databases`,
-replacing `PLACEHOLDER-RUN-wrangler-d1-create`. It is an identifier, not a
-secret. Then apply the schema:
+In `wrangler.jsonc`, **uncomment the `d1_databases` block** and paste in the
+`database_id` it printed. The id is an identifier, not a secret — it is useless
+without account credentials.
+
+The block ships commented out because Cloudflare validates bindings *before* it
+builds: a `database_id` that is not a real UUID fails the deploy in under a
+second with nothing compiled, and `wrangler deploy --dry-run` does not catch it
+because a dry run never talks to the account. `npm test` checks the id is a
+UUID once the block is live.
+
+Then apply the schema:
 
 ```
 npm run db:migrate

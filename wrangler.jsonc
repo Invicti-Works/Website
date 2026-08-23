@@ -122,14 +122,26 @@
   //
   // `database_id` comes from `npx wrangler d1 create invicti-briefs` and is not
   // a secret -- it is an identifier, useless without account credentials.
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "invicti-briefs",
-      "database_id": "PLACEHOLDER-RUN-wrangler-d1-create",
-      "migrations_dir": "migrations"
-    }
-  ],
+  // COMMENTED OUT UNTIL THE DATABASE EXISTS. Uncomment this block and paste the
+  // real id from `npx wrangler d1 create invicti-briefs` -- docs/SETUP.md 12d.
+  //
+  // It cannot ship with a placeholder id: Cloudflare validates bindings before
+  // it builds, a D1 id must be a UUID, and an invalid one fails the deploy in
+  // under a second with nothing compiled. `wrangler deploy --dry-run` does not
+  // catch it, because a dry run never talks to the account.
+  //
+  // While it is commented out, `env.DB` is undefined, /api/intake returns 503,
+  // and /build shows the plain form -- the same degraded state as a missing
+  // ANTHROPIC_API_KEY, and the reason this is safe to merge unfinished.
+  //
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB",
+  //     "database_name": "invicti-briefs",
+  //     "database_id": "<uuid from wrangler d1 create>",
+  //     "migrations_dir": "migrations"
+  //   }
+  // ],
 
   "observability": {
     "enabled": true

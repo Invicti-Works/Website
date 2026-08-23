@@ -146,6 +146,22 @@ const run = (request, env = ENV, extra = {}) => {
   );
 }
 
+// The state this branch actually ships in: a key configured but no D1 binding,
+// because wrangler.jsonc cannot carry a placeholder database_id. Must degrade,
+// not crash.
+{
+  const workerEntry = (await import('./index.js')).default;
+  const response = await workerEntry.fetch(
+    new Request('https://invicti.works/api/intake', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: '{"message":"hi"}',
+    }),
+    { ANTHROPIC_API_KEY: 'k', ASSETS: { fetch: async () => new Response('asset') } },
+  );
+  check('a key but no DB binding -> 503, not a crash', response.status === 503, `got ${response.status}`);
+}
+
 // The spend fuse.
 {
   const store = memoryStore();

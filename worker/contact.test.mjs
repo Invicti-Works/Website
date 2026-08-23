@@ -115,7 +115,16 @@ for (const path of ['/oauth/authorize', '/oauth/authorize/']) {
 // that is what made CMS sign-in fail with MISCONFIGURED_CLIENT -- so "it works
 // because someone typed it into the dashboard" must not be a thing that passes.
 // Secrets are the exception and are deliberately absent here.
-const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+const wranglerRaw = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+
+// Strip whole-line comments before asserting. The file explains itself at
+// length, and several of these keys are named in prose -- a var mentioned only
+// in a comment is not a var the Worker will actually receive, and a binding
+// that is commented out is not a binding.
+const wrangler = wranglerRaw
+  .split('\n')
+  .filter((line) => !line.trimStart().startsWith('//'))
+  .join('\n');
 
 for (const key of [
   'GITHUB_CLIENT_ID',
@@ -147,21 +156,32 @@ for (const key of [
   if (leaked) failures++;
 }
 
-// The intake route needs D1, and a binding with no real database_id is a
-// deploy that looks fine and 503s on the first visitor.
+// D1 backs the intake route. Two ways to get this wrong, and only one of them
+// is allowed to be the committed state.
 {
   const bound = /"binding"\s*:\s*"DB"/.test(wrangler);
-  console.log(`${bound ? 'PASS' : 'FAIL'}  wrangler.jsonc binds the D1 database as DB`);
-  if (!bound) failures++;
 
-  const placeholder = /"database_id"\s*:\s*"PLACEHOLDER/.test(wrangler);
-  // A warning rather than a failure: the placeholder is the correct committed
-  // state until someone runs `wrangler d1 create` on the real account, and
-  // failing here would leave the branch red for a reason no code change fixes.
-  if (placeholder) {
-    console.log('WARN  wrangler.jsonc still has the placeholder database_id — see docs/SETUP.md');
+  if (bound) {
+    // Live binding: the id had better be a real UUID. Cloudflare validates
+    // bindings before it builds, so anything else fails the deploy in under a
+    // second -- and `wrangler deploy --dry-run` will not catch it, because a
+    // dry run never talks to the account. That is worth a hard failure.
+    const id = wrangler.match(/"database_id"\s*:\s*"([^"]*)"/)?.[1] ?? '';
+    const realId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    console.log(
+      `${realId ? 'PASS' : 'FAIL'}  the D1 binding's database_id is a real UUID  (${id || 'empty'})`,
+    );
+    if (!realId) failures++;
   } else {
-    console.log('PASS  wrangler.jsonc has a real database_id');
+    // Commented out, which is the correct committed state until someone runs
+    // `wrangler d1 create` on the real account. A failure here would leave the
+    // branch red for a reason no code change can fix, so it is a warning --
+    // and the degraded path it implies is covered by intake.test.mjs.
+    const documented = /d1_databases/.test(wranglerRaw);
+    console.log(
+      `${documented ? 'WARN' : 'FAIL'}  no D1 binding yet — /api/intake will 503 and /build shows the plain form (docs/SETUP.md 12d)`,
+    );
+    if (!documented) failures++;
   }
 }
 
