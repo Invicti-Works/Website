@@ -82,3 +82,19 @@ In order of likelihood:
 3. **The `main` branch requires pull-request review.** See `docs/SETUP.md`
    step 10 — the CMS commits directly, so branch protection and direct CMS saves
    cannot both be switched on.
+
+## Where briefs from `/build` go
+
+The problem solver at `/build` is not CMS content and nothing about it is edited
+here. Each finished conversation emails a brief to `info@invicti.works` and
+stores a copy in the site's database, so a brief is never lost even if the email
+bounces.
+
+Two things on that page *are* editable, by hand in `src/data/intake.json`
+(not through the CMS — see the note in the file):
+
+- `heading` and `summary` — the page title and the paragraph under it.
+- `opener` — the first question the assistant asks.
+
+Changing the opener changes the tone of every conversation that follows it, so
+it is worth reading the whole thing back before you commit.

@@ -69,22 +69,65 @@ src/
     apps/             marketplace listings -- an entry here creates /marketplace
   content.config.ts Schemas -- content violating these fails the build
   data/site.json    Company details, also editable in the CMS
+  data/intake.json  Public config for /build -- Turnstile site key, copy
   layouts/          BaseLayout (html shell + SEO), PageLayout (title + body)
-  components/       Header, Footer, Logo, Seo, HeroArt, SolutionFinder
-  pages/            Routes
+  components/       Header, Footer, Logo, Seo, SolutionFinder, ToolBrief
+  pages/            Routes -- including build.astro, the AI problem solver
   lib/content.ts    Collection queries, sorting, draft filtering
-  styles/global.css Design tokens, base styles, marketing components
+  styles/global.css Design tokens, base styles, form fields, marketing components
 worker/
-  index.js          Worker entry: OAuth and /api/contact, else back to assets
+  index.js          Worker entry: OAuth, /api/contact, /api/intake, else assets
   cms-auth.js       GitHub OAuth flow, vendored from sveltia-cms-auth (MIT)
   contact.js        The "Find your solution" form handler
-  contact.test.mjs  Its tests -- `npm test`, and CI runs them
+  intake.js         The /build conversation: one model call per turn
+  intake-prompt.js  Its system prompt, tool definition and model pricing
+  intake-store.js   D1 persistence, plus an in-memory sibling for the tests
+  brief-schema.js   The build brief: schema, validator, connector catalog,
+                    and the no-JS form -- shared by the Worker and Astro
+  lib/http.js       JSON-or-HTML replies, shared by both API routes
+  lib/email.js      Resend, shared by both API routes
+  *.test.mjs        Tests -- `npm test`, and CI runs them
+migrations/         D1 schema. NOT applied by deploy -- `npm run db:migrate`
 public/             Derived web assets, CMS, uploads
 wrangler.jsonc      Cloudflare deployment config
 ```
 
 ## Notes for whoever works on this next
 
+- **D1 migrations are not applied by deploying.** Neither `wrangler deploy` nor
+  Workers Builds runs them. Code that expects a table an un-migrated database
+  does not have fails at *runtime*, in front of a visitor, rather than at deploy
+  time. Run `npm run db:migrate` **before** pushing code that needs a new
+  migration. Same species of trap as the plain-vars one below, and it bites in a
+  worse place.
+- **`/api/intake` costs real money, so it fails closed in four places.** A
+  honeypot and the daily spend fuse both short-circuit before any model call; a
+  Turnstile check and a per-IP session count gate new conversations. The fuse
+  reads `ai_usage` in D1 and is capped by `INTAKE_DAILY_BUDGET_CENTS` in
+  `wrangler.jsonc`. None of that replaces the monthly spend limit on the
+  Anthropic workspace — that one is the guard a bug in our code cannot bypass.
+  See `docs/SETUP.md` step 12.
+- **Every intake failure that is not the visitor's fault must stay a 503 or a
+  502, never a 500.** `src/components/ToolBrief.astro` reads any non-400 as
+  "ours, not theirs" and falls back to the plain form. A 500 would too, but the
+  distinction is what lets the route ship before `ANTHROPIC_API_KEY` exists.
+- **The intake transcript lives in D1, never in the browser.** A
+  client-supplied transcript is attacker-supplied: it would make `/api/intake`
+  a free, prompt-injectable LLM proxy on our card. `worker/intake.js` ignores
+  anything transcript-shaped in the request body, and there is a test for it.
+- **Prompt caching on the intake is load-bearing, and a miss is silent.** The
+  ~5k-token system prefix is re-sent every turn; without a cache hit a long
+  conversation costs about four times what it should. If you edit
+  `worker/intake-prompt.js`, nothing per-request may be interpolated into
+  `SYSTEM_PROMPT` — the brief so far deliberately travels in `messages`, after
+  the cache breakpoint. Check `cache_read_input_tokens` in the Worker logs.
+- **The Turnstile *site* key lives in `src/data/intake.json`, not
+  `src/data/site.json`.** `site.json` is a Sveltia CMS collection and the CMS
+  rewrites the whole file from the fields it knows about, so a key it has never
+  heard of is silently dropped the next time anyone edits site settings.
+- **Form field styles are in `global.css`, not scoped to a component.** Two
+  forms use `.field`, `.form-status` and `.form-trap` now; a scoped copy in
+  either would drift.
 - **`wrangler.jsonc` has a `main`, but static pages never reach it.** Assets are
   served without invoking the Worker; only the paths in
   `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`,

@@ -86,7 +86,7 @@ const timelines = [
         and the Worker drops the request. `tabindex="-1"` and `autocomplete="off"`
         keep it out of the way of keyboard and password-manager users.
       */}
-      <div class="finder__trap" aria-hidden="true">
+      <div class="form-trap" aria-hidden="true">
         <label for="f-company-url">Do not fill this in</label>
         <input id="f-company-url" name="companyUrl" type="text" tabindex="-1" autocomplete="off" />
       </div>
@@ -95,7 +95,7 @@ const timelines = [
         <button class="button" type="submit">Send</button>
       </div>
 
-      <p class="finder__status field--wide" id="solution-status" role="status" aria-live="polite"></p>
+      <p class="form-status field--wide" id="solution-status" role="status" aria-live="polite"></p>
     </form>
   </div>
 </section>
@@ -182,87 +182,10 @@ const timelines = [
     align-items: start;
   }
 
-  .field {
-    display: grid;
-    gap: var(--space-2xs);
-  }
-
-  .field--wide {
-    grid-column: 1 / -1;
-  }
-
-  .field label {
-    font-weight: 600;
-    font-size: var(--step--1);
-  }
-
-  .field__hint {
-    font-weight: 400;
-    color: var(--color-text-muted);
-  }
-
-  .field input,
-  .field select,
-  .field textarea {
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius);
-    padding: 0.7rem 0.85rem;
-    min-height: 44px;
-    width: 100%;
-  }
-
-  .field textarea {
-    resize: vertical;
-  }
-
-  .field :is(input, select, textarea):focus-visible {
-    outline: 3px solid var(--color-focus);
-    outline-offset: 2px;
-    border-color: var(--color-focus);
-  }
-
   .finder__actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-md);
-  }
-
-  /* Visually hidden rather than display:none -- some bots skip anything the
-     CSS hides outright, and this one is meant to be filled in. */
-  .finder__trap {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .finder__status:empty {
-    display: none;
-  }
-
-  .finder__status {
-    grid-column: 1 / -1;
-    margin: 0;
-    padding: var(--space-sm) var(--space-md);
-    border-radius: var(--radius);
-    border: 1px solid var(--color-border);
-    background: var(--color-bg-subtle);
-    font-weight: 500;
-  }
-
-  .finder__status[data-kind='ok'] {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-  }
-
-  .finder__status[data-kind='error'] {
-    border-color: var(--color-accent-warm);
-    color: var(--color-accent-warm);
   }
 </style>

@@ -423,24 +423,117 @@ then forward `info@invicti.works` to a real inbox. This only *receives*.
 Sending from that address needs Google Workspace (free for verified nonprofits
 via Google for Nonprofits) or a service like Resend.
 
-**Contact and lead-capture forms.** This is a fully static site with no server,
-so a form has nowhere to post. The contact page currently uses `mailto:` links
-with prefilled subject lines, which route themselves and cannot silently drop a
-lead. When you want a real form, the options are:
-
-- A Cloudflare Worker that receives the post and emails it on (free, and keeps
-  everything in one account — this is what I would pick).
-- A hosted form service such as Formspree or Tally (free tiers exist, adds a
-  third party and their branding).
-
-For a sales site, a form usually pays for itself: it captures leads who will
-not open their mail client, and it lets you qualify with structured fields. The
-Worker route keeps everything inside Cloudflare and stays on the free tier at
-any volume you are likely to see. Note that adding a Worker script means adding
-`main` to `wrangler.jsonc`, which moves the site off the assets-only free tier
-onto the metered one — still free up to 100,000 requests a day.
+**Contact and lead-capture forms.** Done — see step 6. `worker/contact.js`
+receives `/api/contact` and emails it on through Resend, and `worker/intake.js`
+receives `/api/intake` for the problem solver at `/build` (step 12). Both reply
+with JSON to a `fetch` and a real HTML page to a browser that posted the form
+directly, so neither depends on JavaScript.
 
 ---
+
+---
+
+## 12. The problem solver (`/build`)
+
+The AI intake at `/build` interviews a visitor about something going wrong and
+produces a structured build brief. It stores briefs in D1 and emails them
+through the Resend setup from step 6.
+
+It is safe to deploy before any of this is done: with no `ANTHROPIC_API_KEY` the
+route returns 503 and the page shows a plain form that still reaches your inbox.
+
+### 12a. Anthropic
+
+1. Go to <https://console.anthropic.com> and add billing. **There is no free
+   tier** — you are billed from the first token.
+2. Create a **Workspace** called `invicti-intake`. Do not use the default one:
+   the whole point is that the limit below cannot be spent by anything else.
+3. On that workspace set a **monthly spend limit of $25** and a usage alert at
+   50%. This is the real guardrail. The daily fuse in `wrangler.jsonc` is code,
+   and code has bugs.
+4. Create an API key **scoped to that workspace**, and paste it into the Worker
+   as an encrypted secret named `ANTHROPIC_API_KEY` (same place as step 5b —
+   Workers & Pages → `websitebuild` → Settings → Variables and Secrets → **Encrypt**).
+
+Roughly $0.15–0.30 per completed brief on `claude-opus-5`. If that ever
+matters, change `INTAKE_MODEL` in `wrangler.jsonc` to `claude-sonnet-5`, which
+is about half, or `INTAKE_EFFORT` to `low`. Both are one-line changes.
+
+### 12b. Turnstile
+
+Cloudflare's bot check. Free and unmetered.
+
+1. Cloudflare dashboard → **Turnstile** → **Add site**.
+2. Domain `invicti.works`. Widget mode **Managed**.
+3. Copy the **site key** into `turnstileSiteKey` in `src/data/intake.json`. It
+   is public by design — the browser has to send it — exactly like
+   `GITHUB_CLIENT_ID`.
+4. Paste the **secret key** into the Worker as encrypted `TURNSTILE_SECRET_KEY`.
+
+Leave both blank and the widget simply is not rendered and the check is skipped.
+The honeypot, the per-IP limit and the daily fuse still apply.
+
+### 12c. The salt
+
+Generate 32 random characters and add them as encrypted `INTAKE_SALT`:
+
+```
+openssl rand -hex 16
+```
+
+It is used to hash visitor IP addresses for rate limiting. The raw address is
+never stored. With no salt set, no IP is hashed and no per-IP counting happens
+— the route still works.
+
+### 12d. The database
+
+```
+npx wrangler d1 create invicti-briefs
+```
+
+Copy the `database_id` it prints into `wrangler.jsonc` under `d1_databases`,
+replacing `PLACEHOLDER-RUN-wrangler-d1-create`. It is an identifier, not a
+secret. Then apply the schema:
+
+```
+npm run db:migrate
+```
+
+> **Migrations are not applied by deploying.** Neither `wrangler deploy` nor
+> Workers Builds runs them. Code that expects a table an un-migrated database
+> does not have fails at runtime, in front of a visitor, rather than at deploy
+> time. **Run `npm run db:migrate` before pushing code that needs a new
+> migration**, not after. This is the same species of trap as the plain-vars
+> one in step 5b.
+
+Free tier is 5 GB of storage, 5 million row reads a day and 100,000 writes.
+Intake will use a rounding error of that.
+
+### 12e. The sender address
+
+`BRIEF_FROM` in `wrangler.jsonc` is `briefs@invicti.works`. Any address on a
+domain verified in Resend works, and `invicti.works` was verified in step 6a, so
+there is nothing extra to do — but if you change it to another domain you must
+verify that one too or every brief email silently fails.
+
+### 12f. Check it
+
+1. Visit `/build`. You should get a conversation, and a panel on the right that
+   fills in as you answer.
+2. Turn JavaScript off and reload. You should get a plain form instead. Submit
+   it — the reply is a rendered confirmation page and the brief still arrives.
+3. Check the Worker logs for `cache_read_input_tokens`. If it is zero on the
+   second turn of a conversation, prompt caching is not hitting and the bill is
+   roughly four times what it should be.
+4. `npx wrangler d1 execute invicti-briefs --remote --command "SELECT id, headline, completeness FROM briefs"`
+
+### 12g. Privacy
+
+The intake stores what visitors write. There is a note under the composer
+saying so, and saying the conversation is processed by Anthropic. Before
+`/build` is linked from anywhere public-facing beyond the home page, write a
+short `/privacy` page covering what is stored, who processes it, and how long
+it is kept — and link it from that note.
 
 ## Costs
 

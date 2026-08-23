@@ -30,6 +30,7 @@ const labels: Record<string, string> = {
     <div class="site-footer__touch">
       <h2 class="eyebrow">Get in touch</h2>
       <ul class="site-footer__list">
+        <li><a href="/build">Tell us what to build</a></li>
         <li><a href={`mailto:${site.email}`}>{site.email}</a></li>
         {site.phone && (
           <li><a href={`tel:${site.phone.replace(/[^+\d]/g, '')}`}>{site.phone}</a></li>

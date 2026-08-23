@@ -8,8 +8,9 @@ export async function GET(context: APIContext) {
   const body = [
     'User-agent: *',
     'Allow: /',
-    // The CMS is behind Cloudflare Access, but keep it out of the index too.
+    // Both are behind Cloudflare Access, but keep them out of the index too.
     'Disallow: /admin',
+    'Disallow: /console',
     '',
     `Sitemap: ${sitemapUrl}`,
     '',

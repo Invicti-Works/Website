@@ -117,17 +117,52 @@ for (const path of ['/oauth/authorize', '/oauth/authorize/']) {
 // Secrets are the exception and are deliberately absent here.
 const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
 
-for (const key of ['GITHUB_CLIENT_ID', 'ALLOWED_DOMAINS', 'CONTACT_TO', 'CONTACT_FROM']) {
+for (const key of [
+  'GITHUB_CLIENT_ID',
+  'ALLOWED_DOMAINS',
+  'CONTACT_TO',
+  'CONTACT_FROM',
+  'INTAKE_MODEL',
+  'INTAKE_EFFORT',
+  'INTAKE_MAX_TURNS',
+  'INTAKE_DAILY_BUDGET_CENTS',
+  'BRIEF_TO',
+  'BRIEF_FROM',
+]) {
   const present = new RegExp(`"${key}"\\s*:`).test(wrangler);
   console.log(`${present ? 'PASS' : 'FAIL'}  wrangler.jsonc declares ${key}`);
   if (!present) failures++;
 }
 
 // The reverse: a secret in the config file would publish it in a public repo.
-for (const key of ['GITHUB_CLIENT_SECRET', 'RESEND_API_KEY']) {
+for (const key of [
+  'GITHUB_CLIENT_SECRET',
+  'RESEND_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'TURNSTILE_SECRET_KEY',
+  'INTAKE_SALT',
+]) {
   const leaked = new RegExp(`"${key}"\\s*:`).test(wrangler);
   console.log(`${leaked ? 'FAIL' : 'PASS'}  wrangler.jsonc does NOT contain ${key}`);
   if (leaked) failures++;
+}
+
+// The intake route needs D1, and a binding with no real database_id is a
+// deploy that looks fine and 503s on the first visitor.
+{
+  const bound = /"binding"\s*:\s*"DB"/.test(wrangler);
+  console.log(`${bound ? 'PASS' : 'FAIL'}  wrangler.jsonc binds the D1 database as DB`);
+  if (!bound) failures++;
+
+  const placeholder = /"database_id"\s*:\s*"PLACEHOLDER/.test(wrangler);
+  // A warning rather than a failure: the placeholder is the correct committed
+  // state until someone runs `wrangler d1 create` on the real account, and
+  // failing here would leave the branch red for a reason no code change fixes.
+  if (placeholder) {
+    console.log('WARN  wrangler.jsonc still has the placeholder database_id — see docs/SETUP.md');
+  } else {
+    console.log('PASS  wrangler.jsonc has a real database_id');
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);

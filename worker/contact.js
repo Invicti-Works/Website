@@ -5,6 +5,10 @@
  * path) and emails the message on via Resend. Replies in kind: JSON to a fetch,
  * a rendered HTML confirmation to a browser that submitted the form directly.
  *
+ * The request/response and email helpers live in worker/lib/ because
+ * /api/intake needs the same ones; see worker/lib/http.js for why the dual-mode
+ * reply matters.
+ *
  * Configuration, all set on the Worker (see docs/SETUP.md step 6):
  *   RESEND_API_KEY   required. Without it this returns 503 and the browser
  *                    falls back to mailto, so no message is lost.
@@ -12,11 +16,10 @@
  *   CONTACT_FROM     optional. Defaults to website@invicti.works, which must be
  *                    a domain verified in Resend.
  */
+import { htmlPage, json, looksLikeEmail, readSubmission, wantsJson } from './lib/http.js';
+import { DEFAULT_TO, sendEmail } from './lib/email.js';
 
-const DEFAULT_TO = 'info@invicti.works';
-const DEFAULT_FROM = 'Invicti.Works website <website@invicti.works>';
-
-/** Refuse oversized bodies before parsing rather than after. */
+/** This form's own limits, unchanged: the intake route is allowed a larger body. */
 const MAX_BODY_BYTES = 16 * 1024;
 const MAX_MESSAGE_CHARS = 5000;
 
@@ -35,68 +38,6 @@ const TIMELINE_LABELS = {
   live: 'Already have a deadline',
 };
 
-/**
- * Deliberately permissive. Strict email regexes reject valid addresses far more
- * often than they catch bad ones, and the real check is whether the reply
- * arrives.
- */
-const looksLikeEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-
-const escapeHtml = (value) =>
-  String(value).replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  );
-
-const wantsJson = (request) =>
-  (request.headers.get('accept') ?? '').includes('application/json') ||
-  (request.headers.get('content-type') ?? '').includes('application/json');
-
-const json = (body, status) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'content-type': 'application/json; charset=utf-8' },
-  });
-
-/** Minimal styled page for the no-JavaScript path. */
-const htmlPage = (title, message, status) =>
-  new Response(
-    `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)} — Invicti.Works</title>
-<style>
-  body{font:16px/1.6 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-       margin:0;min-height:100vh;display:grid;place-items:center;padding:2rem;
-       background:#f4f6f9;color:#12161d}
-  main{max-width:34rem;text-align:center;background:#fff;padding:2.5rem;
-       border:1px solid #d0d8e2;border-radius:.5rem}
-  h1{color:#003870;margin:0 0 .75rem;font-size:1.75rem}
-  a{color:#003870;font-weight:600}
-</style></head><body><main>
-<h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p>
-<p><a href="/">Back to Invicti.Works</a></p>
-</main></body></html>`,
-    { status, headers: { 'content-type': 'text/html; charset=utf-8' } },
-  );
-
-async function readSubmission(request) {
-  const type = request.headers.get('content-type') ?? '';
-  const raw = await request.text();
-
-  if (raw.length > MAX_BODY_BYTES) return null;
-
-  if (type.includes('application/json')) {
-    try {
-      const parsed = JSON.parse(raw);
-      return parsed && typeof parsed === 'object' ? parsed : null;
-    } catch {
-      return null;
-    }
-  }
-
-  return Object.fromEntries(new URLSearchParams(raw).entries());
-}
-
 export async function handleContact(request, env) {
   const asJson = wantsJson(request);
 
@@ -106,7 +47,7 @@ export async function handleContact(request, env) {
       : htmlPage('Method not allowed', 'This address only accepts form submissions.', 405);
   }
 
-  const data = await readSubmission(request);
+  const data = await readSubmission(request, MAX_BODY_BYTES);
   if (!data) {
     return asJson
       ? json({ error: 'We could not read that submission.' }, 400)
@@ -141,18 +82,6 @@ export async function handleContact(request, env) {
     return asJson ? json({ error }, 400) : htmlPage('Almost there', error, 400);
   }
 
-  // No key configured yet. 503 rather than 500: the client script reads any
-  // non-400 as "not the visitor's fault" and falls back to mailto.
-  if (!env.RESEND_API_KEY) {
-    return asJson
-      ? json({ error: 'Message delivery is not configured yet.' }, 503)
-      : htmlPage(
-          'Please email us directly',
-          `Our contact form is not finished being set up. Please email ${env.CONTACT_TO ?? DEFAULT_TO}.`,
-          503,
-        );
-  }
-
   const lines = [
     `Name: ${name}`,
     `Email: ${email}`,
@@ -163,26 +92,25 @@ export async function handleContact(request, env) {
     message,
   ].filter(Boolean);
 
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      authorization: `Bearer ${env.RESEND_API_KEY}`,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: env.CONTACT_FROM ?? DEFAULT_FROM,
-      to: [env.CONTACT_TO ?? DEFAULT_TO],
-      // So hitting reply in the inbox writes to the enquirer, not to us.
-      reply_to: email,
-      subject: `Website message — ${name}${organization ? ` (${organization})` : ''}`,
-      text: lines.join('\n'),
-    }),
+  const sent = await sendEmail(env, {
+    replyTo: email,
+    subject: `Website message — ${name}${organization ? ` (${organization})` : ''}`,
+    text: lines.join('\n'),
   });
 
-  if (!response.ok) {
-    // Never surface the provider's response body: it can carry key state and
-    // account detail. The status is enough to debug from the Worker logs.
-    console.error('Resend rejected the message', response.status);
+  // No key configured yet. 503 rather than 500: the client script reads any
+  // non-400 as "not the visitor's fault" and falls back to mailto.
+  if (!sent.ok && sent.reason === 'notConfigured') {
+    return asJson
+      ? json({ error: 'Message delivery is not configured yet.' }, 503)
+      : htmlPage(
+          'Please email us directly',
+          `Our contact form is not finished being set up. Please email ${env.CONTACT_TO ?? DEFAULT_TO}.`,
+          503,
+        );
+  }
+
+  if (!sent.ok) {
     return asJson
       ? json({ error: 'We could not send that just now.' }, 502)
       : htmlPage(
