@@ -1,0 +1,538 @@
+---
+import site from '../data/site.json';
+import intake from '../data/intake.json';
+import { FORM_FIELDS } from '../../worker/brief-schema.js';
+
+/**
+ * The problem solver: an AI interview that ends in a build brief.
+ *
+ * Progressive enhancement in three layers, the same contract SolutionFinder
+ * has been holding since the contact form shipped:
+ *
+ *  1. No JavaScript: the plain form below is what renders, and it POSTs to
+ *     /api/intake like any other form. The Worker structures the answers and
+ *     replies with a real HTML page. If the model is down, the answers are
+ *     still stored and emailed -- nothing on this path depends on AI working.
+ *  2. With JavaScript: the form is hidden, the conversation is shown, and each
+ *     turn is one fetch. The panel on the right fills in as we go, so the
+ *     visitor can see exactly what we have understood.
+ *  3. Endpoint unavailable (no API key yet, model down, the daily budget
+ *     tripped): the form comes back with an explanation, and everything typed
+ *     into the conversation is carried across. Last resort is a prefilled
+ *     mailto, as with SolutionFinder.
+ *
+ * There is also a "prefer a form?" toggle. Plenty of people would rather fill
+ * in boxes than talk to a machine, and making them talk to it anyway is a way
+ * to lose them.
+ *
+ * FORM_FIELDS comes from worker/brief-schema.js so the no-JS form and the
+ * schema the model fills in cannot drift apart.
+ */
+---
+
+<section class="solver" id="problem-solver" aria-labelledby="solver-heading">
+  <h2 id="solver-heading" class="visually-hidden">Describe your problem</h2>
+
+  <div class="solver__grid">
+    {/* ---------------------------------------------------- the conversation */}
+    <div class="solver__chat" id="solver-chat" hidden>
+      <ol class="solver__log" id="solver-log" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation">
+        <li class="turn turn--assistant">
+          <span class="visually-hidden">Invicti assistant said:</span>
+          <p>{intake.opener}</p>
+        </li>
+      </ol>
+
+      <form class="solver__composer" id="solver-form">
+        <div class="field field--wide">
+          <label for="solver-input">Your answer</label>
+          <textarea
+            id="solver-input"
+            name="message"
+            rows="3"
+            maxlength={intake.maxMessageChars}
+            required
+          ></textarea>
+        </div>
+
+        {/* Turnstile renders itself into this if a site key is configured. */}
+        {intake.turnstileSiteKey && (
+          <div
+            class="cf-turnstile solver__turnstile"
+            data-sitekey={intake.turnstileSiteKey}
+            data-callback="onSolverTurnstile"
+            data-appearance="interaction-only"
+          />
+        )}
+
+        <div class="solver__actions">
+          {/* Enter alone must not submit: people press it to start a new line
+              mid-thought, and losing a half-written answer is unforgivable. */}
+          <button class="button" type="submit" id="solver-send">Send</button>
+          <button class="button button--secondary" type="button" id="solver-switch">
+            Prefer a form?
+          </button>
+        </div>
+
+        <p class="form-status" id="solver-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+
+    {/* ------------------------------------------- what we have understood */}
+    <aside class="solver__panel" id="solver-panel" hidden aria-labelledby="solver-panel-heading">
+      <h3 id="solver-panel-heading">What we have so far</h3>
+      {/*
+        aria-live="off" deliberately. This rewrites on every turn, and
+        announcing it would bury the assistant's actual question under a torrent
+        of field names. The status line mentions that it updated instead.
+      */}
+      <dl class="solver__captured" id="solver-captured" aria-live="off">
+        <div><dt>Problem</dt><dd class="muted">Nothing yet</dd></div>
+      </dl>
+      <p class="solver__meter">
+        <span id="solver-progress-label">Brief completeness: 0%</span>
+        <progress id="solver-progress" max="100" value="0" aria-labelledby="solver-progress-label"></progress>
+      </p>
+    </aside>
+
+    {/* ------------------------------------------------------ the plain form */}
+    <div class="solver__form" id="solver-fallback">
+      <p class="solver__intro" id="solver-fallback-intro">
+        Fill this in and we will take it from there. Every answer is optional
+        except the first three — tell us what you can.
+      </p>
+
+      <form id="brief-form" method="POST" action="/api/intake">
+        {FORM_FIELDS.map((f) => (
+          <div class={`field ${f.type === 'textarea' ? 'field--wide' : ''} ${f.type === 'checkbox' ? 'field--check field--wide' : ''}`}>
+            {f.type === 'checkbox' ? (
+              <>
+                <input id={`bf-${f.name}`} name={f.name} type="checkbox" required={f.required} />
+                <label for={`bf-${f.name}`}>{f.label}</label>
+              </>
+            ) : (
+              <>
+                <label for={`bf-${f.name}`}>
+                  {f.label}
+                  {!f.required && <span class="field__hint"> (optional)</span>}
+                  {f.hint && <span class="field__hint">{f.hint}</span>}
+                </label>
+                {f.type === 'textarea' ? (
+                  <textarea id={`bf-${f.name}`} name={f.name} rows={f.rows ?? 3} required={f.required} />
+                ) : f.type === 'select' ? (
+                  <select id={`bf-${f.name}`} name={f.name} required={f.required}>
+                    {f.options?.map((o) => <option value={o.value}>{o.label}</option>)}
+                  </select>
+                ) : (
+                  <input
+                    id={`bf-${f.name}`}
+                    name={f.name}
+                    type={f.type === 'email' ? 'email' : 'text'}
+                    required={f.required}
+                    autocomplete={f.autocomplete}
+                  />
+                )}
+              </>
+            )}
+          </div>
+        ))}
+
+        {/* Honeypot. Real people never see it, so anything filled in here is a
+            bot and the Worker drops the request. */}
+        <div class="form-trap" aria-hidden="true">
+          <label for="bf-company-url">Do not fill this in</label>
+          <input id="bf-company-url" name="companyUrl" type="text" tabindex="-1" autocomplete="off" />
+        </div>
+
+        <div class="field--wide solver__actions">
+          <button class="button" type="submit">Send</button>
+          <button class="button button--secondary" type="button" id="solver-switch-back" hidden>
+            Talk it through instead
+          </button>
+        </div>
+
+        <p class="form-status field--wide" id="brief-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </div>
+
+  <p class="solver__privacy">
+    We store what you tell us so a person can read it and reply, and the
+    conversation is processed by Anthropic's Claude to structure it. We will not
+    ask for passwords, account numbers, or anyone's personal details — please do
+    not paste them. Prefer email? <a href={`mailto:${site.email}`}>{site.email}</a>.
+  </p>
+</section>
+
+<script
+  is:inline
+  define:vars={{
+    contactEmail: site.email,
+    hasTurnstile: Boolean(intake.turnstileSiteKey),
+    maxChars: intake.maxMessageChars,
+  }}
+>
+  (() => {
+    const chat = document.getElementById('solver-chat');
+    const fallback = document.getElementById('solver-fallback');
+    const panel = document.getElementById('solver-panel');
+    const log = document.getElementById('solver-log');
+    const form = document.getElementById('solver-form');
+    const input = document.getElementById('solver-input');
+    const send = document.getElementById('solver-send');
+    const status = document.getElementById('solver-status');
+    const captured = document.getElementById('solver-captured');
+    const progress = document.getElementById('solver-progress');
+    const progressLabel = document.getElementById('solver-progress-label');
+    const switchToForm = document.getElementById('solver-switch');
+    const switchBack = document.getElementById('solver-switch-back');
+    const fallbackIntro = document.getElementById('solver-fallback-intro');
+
+    if (!chat || !fallback || !form || !input) return;
+
+    // JavaScript is running, so lead with the conversation. Everything above
+    // rendered form-first, which is what a browser without this script keeps.
+    chat.hidden = false;
+    panel.hidden = false;
+    fallback.hidden = true;
+    switchBack.hidden = false;
+
+    let sessionId = null;
+    let turnstileToken = null;
+    let finished = false;
+    const said = [];
+
+    // Turnstile calls this by name once the widget resolves.
+    window.onSolverTurnstile = (token) => {
+      turnstileToken = token;
+    };
+
+    const setStatus = (text, kind) => {
+      status.textContent = text;
+      if (kind) status.dataset.kind = kind;
+      else delete status.dataset.kind;
+    };
+
+    const addTurn = (role, text) => {
+      const item = document.createElement('li');
+      item.className = `turn turn--${role}`;
+      const who = document.createElement('span');
+      who.className = 'visually-hidden';
+      who.textContent = role === 'user' ? 'You said:' : 'Invicti assistant said:';
+      const body = document.createElement('p');
+      body.textContent = text;
+      item.append(who, body);
+      log.append(item);
+      // Scroll the log, never the page, and never move focus: stealing it
+      // mid-conversation drops a screen-reader user out of what they were
+      // reading.
+      log.scrollTop = log.scrollHeight;
+    };
+
+    /** Flatten the brief into the short list the panel shows. */
+    const renderCaptured = (brief) => {
+      if (!brief) return;
+      const rows = [];
+      const add = (label, value) => {
+        if (value !== null && value !== undefined && value !== '' && !(Array.isArray(value) && !value.length)) {
+          rows.push([label, Array.isArray(value) ? value.join(', ') : String(value)]);
+        }
+      };
+
+      add('Problem', brief.problem?.headline);
+      add('Happens', brief.problem?.frequency);
+      add('Who uses it', brief.users?.primary?.label);
+      add('How many', brief.users?.primary?.countEstimate);
+      add('Runs on', brief.platform?.target);
+      add('Systems', (brief.systems?.existing ?? []).map((s) => s.vendor));
+      add('Connections', (brief.integrations ?? []).map((i) => i.catalogKey));
+      add('Produces', (brief.workflow?.outputs ?? []).map((o) => o.kind));
+      add('Needed by', brief.constraints?.deadline?.date);
+      add('Budget', brief.constraints?.budget?.band);
+
+      captured.replaceChildren(
+        ...(rows.length
+          ? rows.map(([label, value]) => {
+              const wrap = document.createElement('div');
+              const dt = document.createElement('dt');
+              dt.textContent = label;
+              const dd = document.createElement('dd');
+              dd.textContent = value;
+              wrap.append(dt, dd);
+              return wrap;
+            })
+          : [(() => {
+              const wrap = document.createElement('div');
+              const dt = document.createElement('dt');
+              dt.textContent = 'Problem';
+              const dd = document.createElement('dd');
+              dd.className = 'muted';
+              dd.textContent = 'Nothing yet';
+              wrap.append(dt, dd);
+              return wrap;
+            })()]),
+      );
+
+      const score = brief.completeness?.score ?? 0;
+      progress.value = score;
+      progressLabel.textContent = `Brief completeness: ${score}%`;
+    };
+
+    /**
+     * Hand the conversation to the plain form, carrying across everything
+     * already said so nobody retypes it.
+     */
+    const degradeToForm = (why) => {
+      const problemField = document.getElementById('bf-problem');
+      if (problemField && said.length && !problemField.value) {
+        problemField.value = said.join('\n\n');
+      }
+      chat.hidden = true;
+      panel.hidden = true;
+      fallback.hidden = false;
+      fallbackIntro.textContent = why;
+      fallbackIntro.dataset.kind = 'warn';
+      (document.getElementById('bf-name') ?? problemField)?.focus();
+    };
+
+    /** Absolute last resort, matching SolutionFinder's third layer. */
+    const mailtoFallback = () => {
+      const href =
+        `mailto:${contactEmail}` +
+        `?subject=${encodeURIComponent('Something we could fix')}` +
+        `&body=${encodeURIComponent(said.join('\n\n'))}`;
+      setStatus('Opening your email app instead — what you have written is already in it.', 'warn');
+      window.location.href = href;
+    };
+
+    switchToForm.addEventListener('click', () => {
+      degradeToForm('No problem — here is the form. Anything you already said is filled in below.');
+    });
+
+    switchBack.addEventListener('click', () => {
+      fallback.hidden = true;
+      chat.hidden = false;
+      panel.hidden = false;
+      input.focus();
+    });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (finished) return;
+
+      const message = input.value.trim();
+      if (!message) return;
+      if (message.length > maxChars) {
+        setStatus(`Please keep it under ${maxChars} characters.`, 'error');
+        return;
+      }
+
+      if (hasTurnstile && !sessionId && !turnstileToken) {
+        setStatus('Just a moment — still checking you are a person.', 'pending');
+        return;
+      }
+
+      addTurn('user', message);
+      said.push(message);
+      input.value = '';
+      send.disabled = true;
+      setStatus('Thinking…', 'pending');
+
+      try {
+        const response = await fetch('/api/intake', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', accept: 'application/json' },
+          body: JSON.stringify({ sessionId, message, turnstileToken }),
+        });
+
+        // 400 and 429 are things the visitor can act on. Anything else is ours,
+        // and the honest response is to stop pretending and give them the form.
+        if (response.status === 400 || response.status === 429) {
+          const payload = await response.json().catch(() => ({}));
+          setStatus(payload.error ?? 'Please try rephrasing that.', 'error');
+          return;
+        }
+
+        if (!response.ok) {
+          degradeToForm(
+            'Our assistant is not available right now, so here is the form instead — ' +
+              'what you have already written is below, and it reaches the same inbox.',
+          );
+          return;
+        }
+
+        const payload = await response.json();
+        sessionId = payload.sessionId ?? sessionId;
+        addTurn('assistant', payload.reply);
+        renderCaptured(payload.brief);
+
+        if (!payload.complete) {
+          setStatus('Updated what we have so far.', null);
+          input.focus();
+          return;
+        }
+
+        finished = true;
+        input.disabled = true;
+        send.hidden = true;
+        switchToForm.hidden = true;
+        setStatus(
+          payload.emailed
+            ? 'Saved, and a copy is on its way to your inbox. Someone will read it and reply.'
+            : 'Saved. Someone will read it and reply.',
+          'ok',
+        );
+        // The one place focus moves, and only once the conversation is over.
+        const heading = document.getElementById('solver-panel-heading');
+        heading?.setAttribute('tabindex', '-1');
+        heading?.focus();
+      } catch {
+        if (said.length > 1) mailtoFallback();
+        else
+          degradeToForm(
+            'We could not reach our assistant, so here is the form instead. It reaches the same inbox.',
+          );
+      } finally {
+        send.disabled = false;
+      }
+    });
+  })();
+</script>
+
+{intake.turnstileSiteKey && (
+  <script is:inline async defer src="https://challenges.cloudflare.com/turnstile/v0/api.js"></script>
+)}
+
+<style>
+  .solver__grid {
+    display: grid;
+    gap: var(--space-xl);
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  @media (max-width: 52rem) {
+    .solver__grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .solver__chat,
+  .solver__form {
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  .solver__panel {
+    grid-column: 2;
+    position: sticky;
+    top: var(--space-md);
+    padding: var(--space-lg);
+    background: var(--color-bg-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+
+  @media (max-width: 52rem) {
+    .solver__panel {
+      grid-column: 1;
+      position: static;
+    }
+  }
+
+  .solver__log {
+    list-style: none;
+    margin: 0 0 var(--space-lg);
+    padding: 0;
+    display: grid;
+    gap: var(--space-md);
+    max-height: 26rem;
+    overflow-y: auto;
+  }
+
+  .turn p {
+    margin: 0;
+    padding: var(--space-sm) var(--space-md);
+    border-radius: var(--radius);
+    max-width: 44ch;
+  }
+
+  .turn--assistant p {
+    background: var(--color-bg-inset);
+  }
+
+  .turn--user p {
+    margin-inline-start: auto;
+    background: var(--color-accent);
+    color: var(--color-accent-contrast);
+  }
+
+  .solver__composer,
+  #brief-form {
+    display: grid;
+    gap: var(--space-md);
+  }
+
+  #brief-form {
+    grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+    align-items: start;
+  }
+
+  .solver__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-md);
+  }
+
+  .solver__intro[data-kind='warn'] {
+    padding: var(--space-sm) var(--space-md);
+    border: 1px solid var(--color-accent-warm);
+    border-radius: var(--radius);
+    color: var(--color-accent-warm);
+    font-weight: 500;
+  }
+
+  .solver__captured {
+    margin: var(--space-md) 0;
+    display: grid;
+    gap: var(--space-sm);
+  }
+
+  .solver__captured div {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  .solver__captured dt {
+    font-size: var(--step--1);
+    font-weight: 700;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .solver__captured dd {
+    margin: 0;
+  }
+
+  .solver__meter {
+    margin: 0;
+    display: grid;
+    gap: var(--space-2xs);
+    font-size: var(--step--1);
+    color: var(--color-text-muted);
+  }
+
+  .solver__meter progress {
+    width: 100%;
+    height: 0.5rem;
+  }
+
+  .solver__privacy {
+    margin-block-start: var(--space-xl);
+    max-width: var(--measure);
+    font-size: var(--step--1);
+    color: var(--color-text-muted);
+  }
+</style>

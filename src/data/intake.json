@@ -1,0 +1,12 @@
+{
+  "_comment": "Public configuration for the /build problem solver. Deliberately NOT in site.json: that file is a Sveltia CMS collection, and the CMS rewrites the whole file from the fields it knows about, so a key it has never heard of gets silently dropped the next time anyone edits site settings.",
+
+  "heading": "No problem is too small to fix.",
+  "summary": "Tell us what keeps going wrong. A few questions later we will have enough to build you something that fixes it — and you will get a copy of everything we captured.",
+  "opener": "What is the thing that keeps going wrong? Say it however you would say it to a colleague — no need to make it sound like a specification.",
+  "maxTurns": 20,
+  "maxMessageChars": 1200,
+
+  "_turnstileSiteKey": "Cloudflare Turnstile site key. Public by design — it is sent to every browser — exactly like GITHUB_CLIENT_ID in wrangler.jsonc. The matching secret is TURNSTILE_SECRET_KEY and lives encrypted on the Worker. Empty until Turnstile is set up; the widget is simply not rendered, and the Worker skips the check. See docs/SETUP.md.",
+  "turnstileSiteKey": ""
+}

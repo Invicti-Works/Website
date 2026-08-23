@@ -16,9 +16,12 @@
     "check": "astro check",
     "deploy": "npm run build && wrangler deploy",
     "cf:preview": "npm run build && wrangler dev",
-    "test": "node worker/contact.test.mjs"
+    "test": "node worker/contact.test.mjs && node worker/intake.test.mjs",
+    "db:migrate": "wrangler d1 migrations apply invicti-briefs --remote",
+    "db:migrate:local": "wrangler d1 migrations apply invicti-briefs --local"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
     "@astrojs/sitemap": "^3.6.0",
     "astro": "^7.2.4"
   },

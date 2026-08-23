@@ -18,8 +18,30 @@ const bios = await Promise.all(
       <h1>{site.tagline}</h1>
       <p class="hero__lede">{site.description}</p>
       <div class="cta-row">
-        <a class="button" href="#find-your-solution">Find your solution</a>
+        <a class="button" href="/build">Tell us what to build</a>
+        <a class="button button--secondary" href="#find-your-solution">Find your solution</a>
         <a class="button button--secondary" href="/contact">Contact Us</a>
+      </div>
+    </div>
+  </section>
+
+  {/*
+    Two front doors, on purpose. /build answers "here is what keeps going wrong,
+    build me something"; the form below answers "we want to hire you". Merging
+    them would make both worse.
+  */}
+  <section class="band section" aria-labelledby="solver-teaser-heading">
+    <div class="container solver-teaser">
+      <p class="eyebrow">No problem is too small</p>
+      <h2 id="solver-teaser-heading">Something small going wrong? Tell us about it.</h2>
+      <p>
+        Answer a few questions and our problem solver works out exactly what
+        would fix it — what it needs to talk to, who would use it, what it has
+        to produce. You get a copy of everything it captured, and a person reads
+        it before anyone builds anything.
+      </p>
+      <div class="cta-row">
+        <a class="button" href="/build">Start with the problem</a>
       </div>
     </div>
   </section>
@@ -89,6 +111,23 @@ const bios = await Promise.all(
     margin-block-start: var(--space-md);
     font-size: var(--step-1);
     color: #cfe0f7;
+  }
+
+  .solver-teaser > * {
+    max-width: 46rem;
+  }
+
+  .solver-teaser h2 {
+    margin-block-start: var(--space-sm);
+  }
+
+  .solver-teaser p:not(.eyebrow) {
+    margin-block-start: var(--space-md);
+    color: #cfe0f7;
+  }
+
+  .solver-teaser .cta-row {
+    margin-block-start: var(--space-lg);
   }
 
   .team {

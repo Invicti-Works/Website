@@ -78,6 +78,12 @@
   //
   // A GitHub OAuth client ID is public by design: it is sent in the authorize
   // URL and visible to anyone who signs in. Only the secret is a secret.
+  // Secrets referenced by worker/intake.js and set in the dashboard, encrypted:
+  //   ANTHROPIC_API_KEY     absent -> /api/intake returns 503 and /build shows
+  //                         the plain form. Safe to ship before it exists.
+  //   TURNSTILE_SECRET_KEY  absent -> the bot check is skipped; the honeypot,
+  //                         the per-IP count and the daily fuse still hold.
+  //   INTAKE_SALT           absent -> no IP is hashed and none is stored.
   "vars": {
     // OAuth App client ID. Public by design -- GitHub puts it in the authorize
     // URL, so every visitor who signs in already sees it. The matching secret
@@ -85,8 +91,57 @@
     "GITHUB_CLIENT_ID": "Ov23li25oKgxDYjG5Ua6",
     "ALLOWED_DOMAINS": "invicti.works",
     "CONTACT_TO": "info@invicti.works",
-    "CONTACT_FROM": "Invicti.Works website <website@invicti.works>"
+    "CONTACT_FROM": "Invicti.Works website <website@invicti.works>",
+
+    // The intake conversation behind /build.
+    //
+    // Model and effort are configuration rather than code so the cost/quality
+    // trade can be made without a code review: claude-sonnet-5 is roughly half
+    // the price of claude-opus-5, and "low" effort is cheaper again. Start
+    // high -- a brief nobody can build from wastes far more than the tokens.
+    "INTAKE_MODEL": "claude-opus-5",
+    "INTAKE_EFFORT": "medium",
+    "INTAKE_MAX_TURNS": "20",
+    // The fuse, in cents per UTC day. worker/intake.js reads the running total
+    // out of the ai_usage table before every model call and returns 503 once
+    // it is reached, which drops /build back to the plain form. Set a monthly
+    // limit on the Anthropic workspace as well: this one is code, and code has
+    // bugs.
+    "INTAKE_DAILY_BUDGET_CENTS": "100",
+    "BRIEF_TO": "info@invicti.works",
+    "BRIEF_FROM": "Invicti.Works <briefs@invicti.works>"
   },
+
+  // Briefs, transcripts and the daily spend counter.
+  //
+  // MIGRATIONS ARE NOT APPLIED BY DEPLOY. Neither `wrangler deploy` nor
+  // Workers Builds runs them, so code that expects a column an un-migrated
+  // database does not have fails at runtime, in front of a visitor, rather
+  // than at deploy time. Run `npm run db:migrate` BEFORE pushing code that
+  // needs a new migration. Same species of trap as the plain-vars one above.
+  //
+  // `database_id` comes from `npx wrangler d1 create invicti-briefs` and is not
+  // a secret -- it is an identifier, useless without account credentials.
+  // COMMENTED OUT UNTIL THE DATABASE EXISTS. Uncomment this block and paste the
+  // real id from `npx wrangler d1 create invicti-briefs` -- docs/SETUP.md 12d.
+  //
+  // It cannot ship with a placeholder id: Cloudflare validates bindings before
+  // it builds, a D1 id must be a UUID, and an invalid one fails the deploy in
+  // under a second with nothing compiled. `wrangler deploy --dry-run` does not
+  // catch it, because a dry run never talks to the account.
+  //
+  // While it is commented out, `env.DB` is undefined, /api/intake returns 503,
+  // and /build shows the plain form -- the same degraded state as a missing
+  // ANTHROPIC_API_KEY, and the reason this is safe to merge unfinished.
+  //
+  // "d1_databases": [
+  //   {
+  //     "binding": "DB",
+  //     "database_name": "invicti-briefs",
+  //     "database_id": "<uuid from wrangler d1 create>",
+  //     "migrations_dir": "migrations"
+  //   }
+  // ],
 
   "observability": {
     "enabled": true

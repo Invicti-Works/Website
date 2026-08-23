@@ -1,0 +1,21 @@
+---
+import PageLayout from '../layouts/PageLayout.astro';
+import ToolBrief from '../components/ToolBrief.astro';
+import intake from '../data/intake.json';
+
+/**
+ * /build — the AI problem solver.
+ *
+ * Its own page rather than a section on the home page. This is a five-minute
+ * interaction that deserves its own URL and its own <h1>, and it is the page
+ * to point posts and ads at. The home page's "Find your solution" form answers
+ * a different question ("hire us") and stays exactly as it is.
+ *
+ * Indexed on purpose -- see astro.config.mjs, which excludes /admin and
+ * /console from the sitemap but not this.
+ */
+---
+
+<PageLayout title={intake.heading} summary={intake.summary}>
+  <ToolBrief />
+</PageLayout>

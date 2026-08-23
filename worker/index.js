@@ -7,12 +7,14 @@
  * under `run_worker_first` in wrangler.jsonc, plus any request that matches no
  * asset at all.
  *
- * It does two things: signs editors in to the CMS at /admin/ (the OAuth flow is
- * vendored from sveltia-cms-auth; see worker/cms-auth.js), and receives the
- * "Find your solution" contact form (see worker/contact.js).
+ * It does three things: signs editors in to the CMS at /admin/ (the OAuth flow
+ * is vendored from sveltia-cms-auth; see worker/cms-auth.js), receives the
+ * "Find your solution" contact form (see worker/contact.js), and runs the AI
+ * intake conversation behind /build (see worker/intake.js).
  */
 import cmsAuth from './cms-auth.js';
 import { handleContact } from './contact.js';
+import { handleIntake } from './intake.js';
 
 /** Paths the vendored handler owns. Everything else falls through to assets. */
 const AUTH_PATHS = new Set(['/oauth/authorize', '/oauth/redirect']);
@@ -35,6 +37,7 @@ const normalize = (request, pathname) => {
 };
 
 const CONTACT_PATH = '/api/contact';
+const INTAKE_PATH = '/api/intake';
 
 export default {
   async fetch(request, env, ctx) {
@@ -58,6 +61,10 @@ export default {
 
     if (route === CONTACT_PATH) {
       return handleContact(request, env);
+    }
+
+    if (route === INTAKE_PATH) {
+      return handleIntake(request, env);
     }
 
     // Not an OAuth path, and the asset layer already found no file for it.

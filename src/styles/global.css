@@ -234,6 +234,114 @@ a:hover {
 }
 
 /* ------------------------------------------------------------------
+   Form fields
+
+   Promoted out of SolutionFinder.astro's scoped <style> when /build grew a
+   second form. Two components now depend on these, so a scoped copy in either
+   one would drift.
+   ------------------------------------------------------------------ */
+.field {
+  display: grid;
+  gap: var(--space-2xs);
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+.field label {
+  font-weight: 600;
+  font-size: var(--step--1);
+}
+
+.field__hint {
+  display: block;
+  font-weight: 400;
+  font-size: var(--step--1);
+  color: var(--color-text-muted);
+}
+
+.field input,
+.field select,
+.field textarea {
+  font: inherit;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 0.7rem 0.85rem;
+  min-height: 44px;
+  width: 100%;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field :is(input, select, textarea):focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 2px;
+  border-color: var(--color-focus);
+}
+
+/* A checkbox is the one field that reads as a row rather than a stack. */
+.field--check {
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: var(--space-xs);
+}
+
+.field--check input {
+  width: 1.15rem;
+  min-height: 1.15rem;
+  height: 1.15rem;
+  margin-block-start: 0.25rem;
+}
+
+.field--check label {
+  font-weight: 400;
+}
+
+/* Visually hidden rather than display:none -- some bots skip anything the CSS
+   hides outright, and this one is meant to be filled in. */
+.form-trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Shared status line. `data-kind` carries the meaning; role="status" on the
+   element carries it to a screen reader. */
+.form-status:empty {
+  display: none;
+}
+
+.form-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+  font-weight: 500;
+}
+
+.form-status[data-kind='ok'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+/* Warm, not brand orange: #f87000 is 2.87:1 on white. See docs/BRAND.md. */
+.form-status[data-kind='error'],
+.form-status[data-kind='warn'] {
+  border-color: var(--color-accent-warm);
+  color: var(--color-accent-warm);
+}
+
+/* ------------------------------------------------------------------
    Components
    ------------------------------------------------------------------ */
 .skip-link {

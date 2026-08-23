@@ -115,19 +115,74 @@ for (const path of ['/oauth/authorize', '/oauth/authorize/']) {
 // that is what made CMS sign-in fail with MISCONFIGURED_CLIENT -- so "it works
 // because someone typed it into the dashboard" must not be a thing that passes.
 // Secrets are the exception and are deliberately absent here.
-const wrangler = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+const wranglerRaw = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
 
-for (const key of ['GITHUB_CLIENT_ID', 'ALLOWED_DOMAINS', 'CONTACT_TO', 'CONTACT_FROM']) {
+// Strip whole-line comments before asserting. The file explains itself at
+// length, and several of these keys are named in prose -- a var mentioned only
+// in a comment is not a var the Worker will actually receive, and a binding
+// that is commented out is not a binding.
+const wrangler = wranglerRaw
+  .split('\n')
+  .filter((line) => !line.trimStart().startsWith('//'))
+  .join('\n');
+
+for (const key of [
+  'GITHUB_CLIENT_ID',
+  'ALLOWED_DOMAINS',
+  'CONTACT_TO',
+  'CONTACT_FROM',
+  'INTAKE_MODEL',
+  'INTAKE_EFFORT',
+  'INTAKE_MAX_TURNS',
+  'INTAKE_DAILY_BUDGET_CENTS',
+  'BRIEF_TO',
+  'BRIEF_FROM',
+]) {
   const present = new RegExp(`"${key}"\\s*:`).test(wrangler);
   console.log(`${present ? 'PASS' : 'FAIL'}  wrangler.jsonc declares ${key}`);
   if (!present) failures++;
 }
 
 // The reverse: a secret in the config file would publish it in a public repo.
-for (const key of ['GITHUB_CLIENT_SECRET', 'RESEND_API_KEY']) {
+for (const key of [
+  'GITHUB_CLIENT_SECRET',
+  'RESEND_API_KEY',
+  'ANTHROPIC_API_KEY',
+  'TURNSTILE_SECRET_KEY',
+  'INTAKE_SALT',
+]) {
   const leaked = new RegExp(`"${key}"\\s*:`).test(wrangler);
   console.log(`${leaked ? 'FAIL' : 'PASS'}  wrangler.jsonc does NOT contain ${key}`);
   if (leaked) failures++;
+}
+
+// D1 backs the intake route. Two ways to get this wrong, and only one of them
+// is allowed to be the committed state.
+{
+  const bound = /"binding"\s*:\s*"DB"/.test(wrangler);
+
+  if (bound) {
+    // Live binding: the id had better be a real UUID. Cloudflare validates
+    // bindings before it builds, so anything else fails the deploy in under a
+    // second -- and `wrangler deploy --dry-run` will not catch it, because a
+    // dry run never talks to the account. That is worth a hard failure.
+    const id = wrangler.match(/"database_id"\s*:\s*"([^"]*)"/)?.[1] ?? '';
+    const realId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    console.log(
+      `${realId ? 'PASS' : 'FAIL'}  the D1 binding's database_id is a real UUID  (${id || 'empty'})`,
+    );
+    if (!realId) failures++;
+  } else {
+    // Commented out, which is the correct committed state until someone runs
+    // `wrangler d1 create` on the real account. A failure here would leave the
+    // branch red for a reason no code change can fix, so it is a warning --
+    // and the degraded path it implies is covered by intake.test.mjs.
+    const documented = /d1_databases/.test(wranglerRaw);
+    console.log(
+      `${documented ? 'WARN' : 'FAIL'}  no D1 binding yet — /api/intake will 503 and /build shows the plain form (docs/SETUP.md 12d)`,
+    );
+    if (!documented) failures++;
+  }
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILURE(S)`);
