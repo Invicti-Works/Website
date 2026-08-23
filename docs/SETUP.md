@@ -526,6 +526,34 @@ verify that one too or every brief email silently fails.
 
 ### 12f. Check it
 
+These have to be run by a person. Claude Code sandboxes cannot reach
+`*.workers.dev` or `api.cloudflare.com` — the same restriction that
+`.github/workflows/cloudflare-dns.yml` exists to work around — so nobody can
+verify a deployment from inside a session, only the local build and tests.
+
+Every pull request gets a branch preview URL in the Cloudflare comment. Against
+that URL, **before** any of the setup above is done, the degraded path should
+hold:
+
+```
+# The page renders form-first, because that is what a browser with no
+# JavaScript gets.
+curl -s "$PREVIEW/build/" | grep -c 'action="/api/intake"'      # 1
+
+# No key and no database yet, so: 503, never 500. The page reads any non-400
+# as "not the visitor's fault" and falls back to the form.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$PREVIEW/api/intake" \
+  -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"message":"hello"}'                                       # 503
+
+# The honeypot must cost nothing: 200, and no model call behind it.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST "$PREVIEW/api/intake" \
+  -H 'content-type: application/json' -H 'accept: application/json' \
+  -d '{"message":"x","companyUrl":"bot"}'                        # 200
+```
+
+Then once the keys and the database are in place:
+
 1. Visit `/build`. You should get a conversation, and a panel on the right that
    fills in as you answer.
 2. Turn JavaScript off and reload. You should get a plain form instead. Submit
