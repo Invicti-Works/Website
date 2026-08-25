@@ -71,7 +71,7 @@ src/
   data/site.json    Company details, also editable in the CMS
   data/intake.json  Public config for /build -- Turnstile site key, copy
   layouts/          BaseLayout (html shell + SEO), PageLayout (title + body)
-  components/       Header, Footer, Logo, Seo, SolutionFinder, ToolBrief
+  components/       Header, Footer, Logo, Seo, ToolBrief
   pages/            Routes -- build.astro (the problem solver) and
                     console/ (the founders' dashboard, Access-gated)
   lib/content.ts    Collection queries, sorting, draft filtering
@@ -152,9 +152,14 @@ wrangler.jsonc      Cloudflare deployment config
   `src/data/site.json`.** `site.json` is a Sveltia CMS collection and the CMS
   rewrites the whole file from the fields it knows about, so a key it has never
   heard of is silently dropped the next time anyone edits site settings.
-- **Form field styles are in `global.css`, not scoped to a component.** Two
-  forms use `.field`, `.form-status` and `.form-trap` now; a scoped copy in
-  either would drift.
+- **`/build`'s form is the only form on the site, and it must work with nothing
+  configured.** The home page used to carry a second one; it does not any more,
+  so the no-JS path in `worker/intake.js` is the entire lead pipeline. It
+  deliberately tolerates a missing `ANTHROPIC_API_KEY` *and* a missing D1
+  binding — it just emails the answers as typed. Resend is the only real
+  dependency left. Do not add an early return to `handleIntake` that short
+  circuits before `formSubmission`: that is exactly the bug that used to make
+  it 503.
 - **`wrangler.jsonc` has a `main`, but static pages never reach it.** Assets are
   served without invoking the Worker; only the paths in
   `assets.run_worker_first` (`/oauth/authorize`, `/oauth/redirect`,

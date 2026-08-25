@@ -517,12 +517,18 @@ npm run db:migrate
 Free tier is 5 GB of storage, 5 million row reads a day and 100,000 writes.
 Intake will use a rounding error of that.
 
-### 12e. The sender address
+### 12e. The addresses
 
-`BRIEF_FROM` in `wrangler.jsonc` is `briefs@invicti.works`. Any address on a
-domain verified in Resend works, and `invicti.works` was verified in step 6a, so
-there is nothing extra to do — but if you change it to another domain you must
-verify that one too or every brief email silently fails.
+`BRIEF_TO` is `erica@invicti.works` — briefs go to Erica directly rather than
+the shared inbox. It must be a real, deliverable mailbox or alias; Resend does
+not care whether the recipient exists, so a typo here fails silently.
+
+`BRIEF_FROM` is `briefs@invicti.works`. The *sending* domain has to be verified
+in Resend, and `invicti.works` was verified in step 6a, so there is nothing
+extra to do — but change it to another domain and every brief email fails
+silently until that one is verified too.
+
+`CONTACT_TO` is separate and still the general address.
 
 ### 12f. Check it
 

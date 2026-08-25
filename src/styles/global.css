@@ -236,9 +236,9 @@ a:hover {
 /* ------------------------------------------------------------------
    Form fields
 
-   Promoted out of SolutionFinder.astro's scoped <style> when /build grew a
-   second form. Two components now depend on these, so a scoped copy in either
-   one would drift.
+   Global rather than scoped to the one component that currently uses them.
+   /build's form is the site's only form today, but these are the house styles
+   for any input -- the console reuses .field and .form-status already.
    ------------------------------------------------------------------ */
 .field {
   display: grid;
