@@ -358,6 +358,47 @@ const run = (request, env = ENV, extra = {}) => {
   check('a brief row is written anyway', store._briefs.length === 1);
 }
 
+// The form path is the whole lead pipeline now that the home page carries no
+// second form, so it has to survive having nothing configured at all. These
+// three are the ones that would silently lose real enquiries.
+{
+  const sent = [];
+  const response = await handleIntake(
+    formPost({ name: 'Ada', email: 'ada@example.com', problem: 'Paper timesheets.', consent: 'on' }),
+    { CONTACT_TO: 'info@invicti.works' }, // no key, no DB — production before setup
+    { sendEmail: async (_env, msg) => { sent.push(msg.text); return { ok: true }; }, ...deterministic() },
+  );
+  check(
+    'form path works with no API key and no database',
+    response.status === 200 && response.headers.get('content-type')?.includes('text/html'),
+    `got ${response.status}`,
+  );
+  check('and emails the answers as typed', sent[0]?.includes('Paper timesheets.'), sent[0]?.slice(0, 50));
+}
+
+{
+  const anthropic = fakeModel({ brief: briefWith(true) });
+  const sent = [];
+  const response = await handleIntake(
+    formPost({ name: 'Ada', email: 'ada@example.com', problem: 'Paper timesheets.', consent: 'on' }),
+    { ...ENV }, // key present, still no DB
+    { anthropic, sendEmail: async (_e, m) => { sent.push(m.text); return { ok: true }; }, ...deterministic() },
+  );
+  check('form path structures the brief even with no database', response.status === 200 && anthropic.calls.length === 1);
+  check('and still emails it', sent.length >= 1);
+}
+
+{
+  // Resend is the last real dependency. A failure here must not render a
+  // thank-you page for a message that went nowhere.
+  const response = await handleIntake(
+    formPost({ name: 'Ada', email: 'ada@example.com', problem: 'Paper timesheets.', consent: 'on' }),
+    { CONTACT_TO: 'info@invicti.works' },
+    { sendEmail: async () => ({ ok: false, reason: 'rejected', status: 500 }), ...deterministic() },
+  );
+  check('a failed send says so instead of thanking them', response.status === 502, `got ${response.status}`);
+}
+
 // Routing, both with and without the trailing slash the asset layer may add.
 {
   const workerEntry = (await import('./index.js')).default;
@@ -371,8 +412,10 @@ const run = (request, env = ENV, extra = {}) => {
       }),
       { ASSETS: assets },
     );
-    // No API key in this env, so 503 proves it reached the handler; a 200 would
-    // mean it fell through to the asset stub instead.
+    // A JSON POST with no API key: 503 proves it reached the handler, and a
+    // 200 would mean it fell through to the asset stub. Note this is the
+    // conversation path -- the form path deliberately answers 200 in the same
+    // env, which the three tests above cover.
     check(`routed ${path.padEnd(14)}`, response.status === 503, `got ${response.status}`);
   }
 }

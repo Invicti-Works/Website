@@ -111,7 +111,10 @@
     // limit on the Anthropic workspace as well: this one is code, and code has
     // bugs.
     "INTAKE_DAILY_BUDGET_CENTS": "100",
-    "BRIEF_TO": "info@invicti.works",
+    // Briefs go to Erica directly, not the shared inbox. CONTACT_TO above is
+    // separate and still the general address. Resend does not check that a
+    // recipient exists, so a typo here fails silently.
+    "BRIEF_TO": "erica@invicti.works",
     "BRIEF_FROM": "Invicti.Works <briefs@invicti.works>",
 
     // The founders' console at /console.

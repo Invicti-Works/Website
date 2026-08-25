@@ -304,16 +304,25 @@ export async function handleIntake(request, env, deps = {}) {
     return asJson ? json({ ok: true }, 200) : htmlPage('Thank you', 'Thank you — we have got it.', 200);
   }
 
-  if (!env.ANTHROPIC_API_KEY) {
-    return unavailable(asJson, env, 'The problem solver is not finished being set up.');
-  }
-
+  // May be null, and that is survivable on the form path. Do not turn this
+  // into an early return: see the note on formSubmission.
   const store = deps.store ?? (env.DB ? d1Store(env.DB) : null);
-  if (!store) {
+
+  // The form path has no Turnstile token to check -- the widget needs
+  // JavaScript, and this is the path taken when there is none. The honeypot
+  // above is what guards it, plus the fact that it costs at most one capped
+  // model call.
+  if (!asJson) {
+    return formSubmission({ request, env, data, store, now, newId, sendEmail, deps });
+  }
+
+  // Everything below is the conversation, which genuinely cannot run without a
+  // model and somewhere to keep the transcript.
+  if (!env.ANTHROPIC_API_KEY || !store) {
     return unavailable(asJson, env, 'The problem solver is not finished being set up.');
   }
 
-  // The fuse. Read before any model call, on every path.
+  // The fuse. Read before any model call.
   const budgetCents = num(env.INTAKE_DAILY_BUDGET_CENTS, 100);
   const today = dayKey(now());
   const spend = await store.readSpend(today);
@@ -322,12 +331,7 @@ export async function handleIntake(request, env, deps = {}) {
     return unavailable(asJson, env, 'The problem solver has hit its limit for today.');
   }
 
-  // The form path has no Turnstile token to check -- the widget needs
-  // JavaScript, and this is the path taken when there is none. The honeypot,
-  // the per-IP count and the fuse above are what guard it.
-  return asJson
-    ? conversationTurn({ request, env, data, store, now, newId, sendEmail, fetchImpl, deps })
-    : formSubmission({ request, env, data, store, now, newId, sendEmail, deps });
+  return conversationTurn({ request, env, data, store, now, newId, sendEmail, fetchImpl, deps });
 }
 
 /** 503, never 500: the client reads any non-400 as "not the visitor's fault". */
@@ -553,6 +557,21 @@ async function conversationTurn({ request, env, data, store, now, newId, sendEma
 
 /* ------------------------------------------------------------ path 2: form */
 
+/**
+ * The no-JavaScript path, and the one that must never break.
+ *
+ * It is the only way to reach us from /build before any of docs/SETUP.md step
+ * 12 is done, and the only one for a visitor whose browser runs no scripts. So
+ * the model is a bonus here and the database is a bonus here: with neither
+ * configured this still stores nothing, structures nothing, and emails the
+ * answers exactly as typed. The only thing that can fail it is Resend, and
+ * that is the same single point of failure the contact form has always had.
+ *
+ * An earlier version returned 503 from handleIntake when ANTHROPIC_API_KEY was
+ * missing, before this function was ever reached -- which contradicted the
+ * comment above it and would have silently swallowed every lead the day the
+ * home page stopped offering a second form.
+ */
 async function formSubmission({ request, env, data, store, now, newId, sendEmail, deps }) {
   const name = String(data.name ?? '').trim();
   const email = String(data.email ?? '').trim();
@@ -574,19 +593,22 @@ async function formSubmission({ request, env, data, store, now, newId, sendEmail
     .join('\n\n');
 
   const ipHash = await hashIp(request, env.INTAKE_SALT);
-  const session = await store.createSession({ id: newId(), ipHash, now: now() });
+  const session = store
+    ? await store.createSession({ id: newId(), ipHash, now: now() })
+    : { id: newId(), messages: [] };
 
   // The model is a bonus on this path, never a dependency: whatever happens
-  // next, the raw answers are stored and emailed.
+  // next, the raw answers are emailed, and stored too if there is a database.
   let brief = emptyBrief('form');
   try {
+    if (!env.ANTHROPIC_API_KEY) throw new Error('no api key');
     const result = await callModel(env, deps, {
       system: `${SYSTEM_PROMPT}\n\n${FORM_STRUCTURING_PROMPT}`,
       messages: [{ role: 'user', content: `<form_answers>\n${answers}\n</form_answers>` }],
       toolChoice: { type: 'tool', name: 'update_brief' },
     });
 
-    await store.addSpend(dayKey(now()), {
+    await store?.addSpend(dayKey(now()), {
       inputTokens: result.inputTokens,
       outputTokens: result.outputTokens,
       cents: estimateCents(result.model, result.inputTokens, result.outputTokens),
@@ -594,24 +616,36 @@ async function formSubmission({ request, env, data, store, now, newId, sendEmail
 
     brief = acceptBrief(result.brief, brief);
   } catch (error) {
-    console.error('intake: form structuring failed, storing raw answers', error?.status ?? error?.name);
+    console.error('intake: form structuring skipped, emailing raw answers', error?.status ?? error?.message);
   }
 
-  await store.appendMessages(session.id, [{ role: 'user', content: answers }], 0, now());
-  await store.saveTurn(session.id, {
-    brief,
-    completeness: brief?.completeness?.score ?? 0,
-    turns: 1,
-    inputTokens: 0,
-    outputTokens: 0,
-    status: 'complete',
-    now: now(),
-  });
+  if (store) {
+    await store.appendMessages(session.id, [{ role: 'user', content: answers }], 0, now());
+    await store.saveTurn(session.id, {
+      brief,
+      completeness: brief?.completeness?.score ?? 0,
+      turns: 1,
+      inputTokens: 0,
+      outputTokens: 0,
+      status: 'complete',
+      now: now(),
+    });
+  }
 
-  await persist({
+  const { emailed } = await persist({
     env, store, sendEmail, now, newId, brief, session,
     fallback: { name, email, organization: String(data.organization ?? '').trim(), answers },
   });
+
+  // Resend is the only genuine dependency left. If it fails, say so rather
+  // than thanking someone for a message that went nowhere.
+  if (!emailed) {
+    return htmlPage(
+      'Please email us directly',
+      `We could not send that just now. Please email ${env.BRIEF_TO ?? env.CONTACT_TO ?? DEFAULT_TO} and we will pick it up.`,
+      502,
+    );
+  }
 
   return htmlPage(
     'Thank you',
@@ -674,7 +708,7 @@ async function persist({ env, store, sendEmail, now, newId, brief, session, fall
     emailedAt: null,
   };
 
-  await store.saveBrief(record);
+  await store?.saveBrief(record);
 
   const body = [
     briefToText(brief),
@@ -697,7 +731,7 @@ async function persist({ env, store, sendEmail, now, newId, brief, session, fall
 
   if (sent.ok) {
     record.emailedAt = now();
-    await store.saveBrief(record);
+    await store?.saveBrief(record);
   }
 
   // A copy to the visitor, if they gave a usable address. Best effort: their

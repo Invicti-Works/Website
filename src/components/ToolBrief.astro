@@ -6,8 +6,9 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
 /**
  * The problem solver: an AI interview that ends in a build brief.
  *
- * Progressive enhancement in three layers, the same contract SolutionFinder
- * has been holding since the contact form shipped:
+ * Progressive enhancement in three layers. This is now the only form on the
+ * site, so the bottom layer is the whole lead pipeline -- if it breaks, there
+ * is nothing behind it:
  *
  *  1. No JavaScript: the plain form below is what renders, and it POSTs to
  *     /api/intake like any other form. The Worker structures the answers and
@@ -19,7 +20,7 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
  *  3. Endpoint unavailable (no API key yet, model down, the daily budget
  *     tripped): the form comes back with an explanation, and everything typed
  *     into the conversation is carried across. Last resort is a prefilled
- *     mailto, as with SolutionFinder.
+ *     mailto to the same inbox.
  *
  * There is also a "prefer a form?" toggle. Plenty of people would rather fill
  * in boxes than talk to a machine, and making them talk to it anyway is a way
@@ -156,12 +157,6 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     </div>
   </div>
 
-  <p class="solver__privacy">
-    We store what you tell us so a person can read it and reply, and the
-    conversation is processed by Anthropic's Claude to structure it. We will not
-    ask for passwords, account numbers, or anyone's personal details — please do
-    not paste them. Prefer email? <a href={`mailto:${site.email}`}>{site.email}</a>.
-  </p>
 </section>
 
 <script
@@ -295,7 +290,7 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
       (document.getElementById('bf-name') ?? problemField)?.focus();
     };
 
-    /** Absolute last resort, matching SolutionFinder's third layer. */
+    /** Absolute last resort: hand the answers to their mail client. */
     const mailtoFallback = () => {
       const href =
         `mailto:${contactEmail}` +
@@ -529,10 +524,4 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     height: 0.5rem;
   }
 
-  .solver__privacy {
-    margin-block-start: var(--space-xl);
-    max-width: var(--measure);
-    font-size: var(--step--1);
-    color: var(--color-text-muted);
-  }
 </style>
