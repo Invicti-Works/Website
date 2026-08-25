@@ -98,7 +98,7 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
 
     {/* ------------------------------------------------------ the plain form */}
     <div class="solver__form" id="solver-fallback">
-      <p class="solver__intro" id="solver-fallback-intro">
+      <p class="solver__intro">
         Fill this in and we will take it from there. Every answer is optional
         except the first three — tell us what you can.
       </p>
@@ -181,15 +181,17 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     const progressLabel = document.getElementById('solver-progress-label');
     const switchToForm = document.getElementById('solver-switch');
     const switchBack = document.getElementById('solver-switch-back');
-    const fallbackIntro = document.getElementById('solver-fallback-intro');
 
     if (!chat || !fallback || !form || !input) return;
 
-    // JavaScript is running, so lead with the conversation. Everything above
-    // rendered form-first, which is what a browser without this script keeps.
-    chat.hidden = false;
-    panel.hidden = false;
-    fallback.hidden = true;
+    // The form stays as what renders, with or without JavaScript. Leading with
+    // the conversation meant a visitor typed an answer and pressed Send before
+    // reaching anything that worked -- a wasted step whenever the assistant is
+    // unconfigured or down, which is every visit until docs/SETUP.md step 12 is
+    // finished. The conversation is offered instead, on this button.
+    //
+    // Once the assistant is configured and you would rather lead with it,
+    // that is this block: unhide `chat` and `panel`, hide `fallback`.
     switchBack.hidden = false;
 
     let sessionId = null;
@@ -276,8 +278,14 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     /**
      * Hand the conversation to the plain form, carrying across everything
      * already said so nobody retypes it.
+     *
+     * Deliberately says nothing about why. It used to announce that the
+     * assistant was unavailable, which told a visitor about our machinery
+     * rather than about their problem -- and read as an apology for a form
+     * that works perfectly well and reaches the same person. The form
+     * appearing with their words already in it is the whole message.
      */
-    const degradeToForm = (why) => {
+    const degradeToForm = () => {
       const problemField = document.getElementById('bf-problem');
       if (problemField && said.length && !problemField.value) {
         problemField.value = said.join('\n\n');
@@ -285,8 +293,10 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
       chat.hidden = true;
       panel.hidden = true;
       fallback.hidden = false;
-      fallbackIntro.textContent = why;
-      fallbackIntro.dataset.kind = 'warn';
+      // Do not invite them back into something that just failed. Clicking
+      // "talk it through" and being returned here once is a choice that did
+      // not work out; twice is us wasting their time.
+      switchBack.hidden = true;
       (document.getElementById('bf-name') ?? problemField)?.focus();
     };
 
@@ -301,7 +311,7 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     };
 
     switchToForm.addEventListener('click', () => {
-      degradeToForm('No problem — here is the form. Anything you already said is filled in below.');
+      degradeToForm();
     });
 
     switchBack.addEventListener('click', () => {
@@ -349,10 +359,7 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
         }
 
         if (!response.ok) {
-          degradeToForm(
-            'Our assistant is not available right now, so here is the form instead — ' +
-              'what you have already written is below, and it reaches the same inbox.',
-          );
+          degradeToForm();
           return;
         }
 
@@ -383,10 +390,7 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
         heading?.focus();
       } catch {
         if (said.length > 1) mailtoFallback();
-        else
-          degradeToForm(
-            'We could not reach our assistant, so here is the form instead. It reaches the same inbox.',
-          );
+        else degradeToForm();
       } finally {
         send.disabled = false;
       }
@@ -399,40 +403,26 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
 )}
 
 <style>
+  /* One centred column. The form is the page; a sidebar would be something
+     else on it competing for attention. */
   .solver__grid {
     display: grid;
     gap: var(--space-xl);
-    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  @media (max-width: 52rem) {
-    .solver__grid {
-      grid-template-columns: 1fr;
-    }
+    max-width: 46rem;
+    margin-inline: auto;
   }
 
   .solver__chat,
   .solver__form {
-    grid-column: 1;
     min-width: 0;
   }
 
+  /* Under the conversation rather than beside it, so the column holds. */
   .solver__panel {
-    grid-column: 2;
-    position: sticky;
-    top: var(--space-md);
     padding: var(--space-lg);
     background: var(--color-bg-subtle);
     border: 1px solid var(--color-border);
     border-radius: var(--radius);
-  }
-
-  @media (max-width: 52rem) {
-    .solver__panel {
-      grid-column: 1;
-      position: static;
-    }
   }
 
   .solver__log {
@@ -441,8 +431,6 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     padding: 0;
     display: grid;
     gap: var(--space-md);
-    max-height: 26rem;
-    overflow-y: auto;
   }
 
   .turn p {
@@ -478,14 +466,6 @@ import { FORM_FIELDS } from '../../worker/brief-schema.js';
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-md);
-  }
-
-  .solver__intro[data-kind='warn'] {
-    padding: var(--space-sm) var(--space-md);
-    border: 1px solid var(--color-accent-warm);
-    border-radius: var(--radius);
-    color: var(--color-accent-warm);
-    font-weight: 500;
   }
 
   .solver__captured {
