@@ -9,9 +9,11 @@ interface Props {
   type?: 'website' | 'article';
   publishedTime?: Date;
   noindex?: boolean;
+  /** Centre the title block. For pages that are one centred column. */
+  centered?: boolean;
 }
 
-const { title, summary, description, image, type, publishedTime, noindex } = Astro.props;
+const { title, summary, description, image, type, publishedTime, noindex, centered } = Astro.props;
 ---
 
 <BaseLayout
@@ -22,7 +24,7 @@ const { title, summary, description, image, type, publishedTime, noindex } = Ast
   publishedTime={publishedTime}
   noindex={noindex}
 >
-  <div class="container page-header">
+  <div class:list={['container', 'page-header', centered && 'page-header--centered']}>
     <h1>{title}</h1>
     {summary && <p class="page-header__summary">{summary}</p>}
     <slot name="meta" />
@@ -37,6 +39,11 @@ const { title, summary, description, image, type, publishedTime, noindex } = Ast
   .page-header {
     padding-block: var(--space-xl) var(--space-md);
     max-width: var(--measure);
+  }
+
+  .page-header--centered {
+    margin-inline: auto;
+    text-align: center;
   }
 
   .page-header__summary {

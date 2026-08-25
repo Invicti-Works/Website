@@ -13,9 +13,11 @@ import intake from '../data/intake.json';
  *
  * Indexed on purpose -- see astro.config.mjs, which excludes /admin and
  * /console from the sitemap but not this.
+ *
+ * One centred column: the form is the page, so nothing competes with it.
  */
 ---
 
-<PageLayout title={intake.heading} summary={intake.summary}>
+<PageLayout title={intake.heading} summary={intake.summary} centered>
   <ToolBrief />
 </PageLayout>
