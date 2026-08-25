@@ -28,6 +28,118 @@ const bios = await Promise.all(
     </div>
   </section>
 
+  {/*
+    The tagline, explained. This sits directly after the hero because "No app
+    left behind" is a claim, and a visitor's next thought is "meaning what?".
+  */}
+  <section class="section" aria-labelledby="tagline-heading">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="tagline-heading">What “no app left behind” means</h2>
+      </div>
+      <div class="prose">
+        <p>
+          Most software does not fail at launch. It fails two years later, when
+          the developer has moved on, the platform has shifted underneath it,
+          and nobody left in the building knows how it works. We built this
+          company around the part of the job most shops treat as an
+          afterthought: the updates, the monitoring, the small fixes that keep
+          an application worth having.
+        </p>
+        <p>
+          When we build something, we plan for the years after release — who
+          maintains it, what it costs to keep current, and what happens when the
+          operating system changes out from under it. And if someone else built
+          your app and walked away, bring it to us anyway. Orphaned software is
+          half the reason we exist.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  {/*
+    Four offerings as a description list rather than prose: each is a term and
+    its explanation, and a reader scanning for "do they do the thing I need"
+    should be able to find it without reading paragraphs.
+  */}
+  <section class="section section--subtle" aria-labelledby="build-heading">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="build-heading">What we build</h2>
+      </div>
+      <dl class="offer">
+        <div class="offer__item">
+          <dt>Mobile apps.</dt>
+          <dd>
+            iOS and Android, designed around the people who will actually use
+            them — not around a feature list.
+          </dd>
+        </div>
+        <div class="offer__item">
+          <dt>Web platforms.</dt>
+          <dd>
+            The portals, dashboards, and admin tools that do the real work
+            behind an app, or stand on their own.
+          </dd>
+        </div>
+        <div class="offer__item">
+          <dt>The systems underneath.</dt>
+          <dd>
+            Accounts, payments, notifications, reporting. The plumbing nobody
+            notices until it leaks. We build it so it does not.
+          </dd>
+        </div>
+        <div class="offer__item">
+          <dt>Rescues.</dt>
+          <dd>
+            Applications that were built, shipped, and abandoned. We read the
+            code, tell you honestly what shape it is in, and either bring it
+            back or tell you it is kinder to start over.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section" aria-labelledby="how-heading">
+    <div class="container">
+      <div class="section-head">
+        <h2 id="how-heading">How we work</h2>
+      </div>
+      <dl class="offer offer--wide">
+        <div class="offer__item">
+          <dt>We start with the problem, not the app.</dt>
+          <dd>
+            Sometimes the answer is software. Sometimes it is a spreadsheet and
+            a better process. We will tell you which one you have before you
+            spend money finding out.
+          </dd>
+        </div>
+        <div class="offer__item">
+          <dt>We scope honestly.</dt>
+          <dd>
+            You get a plain-language read on what it will take, what it will
+            cost, and where the risk lives — before you commit to anything.
+          </dd>
+        </div>
+        <div class="offer__item">
+          <dt>We show you working software early.</dt>
+          <dd>
+            Small releases you can put in front of real users, not a big reveal
+            at the end.
+          </dd>
+        </div>
+        <div class="offer__item">
+          <dt>We stay.</dt>
+          <dd>
+            Release day is the middle of the story, not the end. Maintenance,
+            monitoring, and updates are part of the plan from day one, priced
+            and written down.
+          </dd>
+        </div>
+      </dl>
+    </div>
+  </section>
 
   {
     bios.length > 0 && (
@@ -35,6 +147,13 @@ const bios = await Promise.all(
         <div class="container">
           <div class="section-head">
             <h2 id="founders-heading">Who we are</h2>
+            <p class="founders__intro">
+              Between us: two decades of nonprofit funding and operations, and
+              two decades of building and delivering software for defense and
+              intelligence missions. We have both spent our careers in rooms
+              where the work had to actually work — which is the standard we
+              hold our software to.
+            </p>
           </div>
           <div class="team">
             {bios.map(({ member, Content }) => (
@@ -92,6 +211,44 @@ const bios = await Promise.all(
     margin-block-start: var(--space-md);
     font-size: var(--step-1);
     color: #cfe0f7;
+  }
+
+  /* Term and description on one line at width, stacked when there is no room
+     for two columns. `dt` carries the weight so the list scans as headings. */
+  .offer {
+    display: grid;
+    gap: var(--space-lg);
+    grid-template-columns: repeat(auto-fit, minmax(min(24rem, 100%), 1fr));
+  }
+
+  .offer--wide {
+    grid-template-columns: 1fr;
+    max-width: var(--measure);
+    gap: var(--space-md);
+  }
+
+  .offer__item {
+    display: grid;
+    gap: var(--space-2xs);
+  }
+
+  .offer dt {
+    font-weight: 700;
+    font-size: var(--step-0);
+    color: var(--color-accent);
+  }
+
+  .offer dd {
+    margin: 0;
+    max-width: var(--measure);
+    color: var(--color-text-muted);
+  }
+
+  .founders__intro {
+    margin-block-start: var(--space-md);
+    max-width: var(--measure);
+    font-size: var(--step-1);
+    color: var(--color-text-muted);
   }
 
   .team {
