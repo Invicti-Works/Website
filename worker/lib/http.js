@@ -59,6 +59,12 @@ export const htmlPage = (title, message, status) =>
  * Read a POST body as an object, whether it arrived as JSON or as an ordinary
  * form submission. Returns null for anything unreadable or oversized, which
  * every caller turns into a 400.
+ *
+ * A key that appears more than once comes back as an array. That is how a
+ * browser posts a group of checkboxes sharing one name -- the pills on /build
+ * -- and `Object.fromEntries` would have kept only the last one, silently
+ * throwing away every answer but the final tick. A key that appears once is
+ * still a plain string, so callers reading single fields are unaffected.
  */
 export async function readSubmission(request, maxBytes = MAX_BODY_BYTES) {
   const type = request.headers.get('content-type') ?? '';
@@ -75,5 +81,11 @@ export async function readSubmission(request, maxBytes = MAX_BODY_BYTES) {
     }
   }
 
-  return Object.fromEntries(new URLSearchParams(raw).entries());
+  const params = new URLSearchParams(raw);
+  const data = {};
+  for (const key of new Set(params.keys())) {
+    const values = params.getAll(key);
+    data[key] = values.length > 1 ? values : values[0];
+  }
+  return data;
 }

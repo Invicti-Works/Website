@@ -122,6 +122,187 @@ export const CONNECTOR_CATALOG = [
 
 export const CONNECTOR_KEYS = CONNECTOR_CATALOG.map((c) => c.key);
 
+/**
+ * What a visitor can say they already use, as pickable options rather than a
+ * blank box.
+ *
+ * A blank box asking "what software do you already use?" is answered with one
+ * word or not at all, and the one word is usually ambiguous ("Sheets" — Google
+ * or Excel?). A list is faster to answer, gives comparable answers across
+ * briefs, and jogs the memory: people forget they use Zapier until they see it.
+ *
+ * The first group is deliberately not software. Plenty of the work we are asked
+ * to fix is done on paper, in an inbox, or in somebody's head, and a list that
+ * offers no way to say that quietly tells those visitors they are in the wrong
+ * place. "Nothing yet" is a first-class answer.
+ *
+ * These are labels, not connectors. CONNECTOR_CATALOG above says what we can
+ * integrate with today and stays the authority on that; this list is broader on
+ * purpose, because knowing somebody lives in Jobber matters even though we
+ * cannot yet talk to it. FREE_TEXT_TOOL_FIELD catches the rest — the list will
+ * never be complete and should not pretend to be.
+ */
+export const TOOL_CHOICE_GROUPS = [
+  {
+    label: 'How it is handled now',
+    options: [
+      'Spreadsheets',
+      'Paper forms or notebooks',
+      'A whiteboard or wall planner',
+      'An email inbox',
+      'Text messages',
+      'Phone calls',
+      'Someone remembers it',
+      'Another app not listed here',
+      'Nothing yet',
+    ],
+  },
+  {
+    label: 'Spreadsheets and documents',
+    options: [
+      'Google Sheets',
+      'Microsoft Excel',
+      'Google Docs',
+      'Microsoft Word',
+      'Apple Numbers or Pages',
+      'Airtable',
+      'Notion',
+      'Smartsheet',
+      'Coda',
+    ],
+  },
+  {
+    label: 'Email, chat and meetings',
+    options: [
+      'Gmail',
+      'Outlook',
+      'Microsoft Teams',
+      'Slack',
+      'WhatsApp',
+      'Zoom',
+      'Google Meet',
+      'Discord',
+    ],
+  },
+  {
+    label: 'Calendars and booking',
+    options: [
+      'Google Calendar',
+      'Outlook Calendar',
+      'Calendly',
+      'Acuity Scheduling',
+      'Eventbrite',
+    ],
+  },
+  {
+    label: 'Money, invoicing and payments',
+    options: [
+      'QuickBooks',
+      'Xero',
+      'FreshBooks',
+      'Wave',
+      'Sage',
+      'Stripe',
+      'Square',
+      'PayPal',
+      'Venmo or Zelle',
+      'Bill.com',
+      'Expensify',
+    ],
+  },
+  {
+    label: 'Customers, donors and marketing',
+    options: [
+      'Salesforce',
+      'HubSpot',
+      'Zoho',
+      'Pipedrive',
+      'Mailchimp',
+      'Constant Contact',
+      'Bloomerang',
+      'DonorPerfect',
+      'Little Green Light',
+      'Neon CRM',
+      "Blackbaud or Raiser's Edge",
+      'Givebutter',
+    ],
+  },
+  {
+    label: 'Files and storage',
+    options: [
+      'Google Drive',
+      'OneDrive or SharePoint',
+      'Dropbox',
+      'Box',
+      'iCloud',
+    ],
+  },
+  {
+    label: 'Work, projects and tickets',
+    options: [
+      'Asana',
+      'Trello',
+      'Monday.com',
+      'ClickUp',
+      'Basecamp',
+      'Jira',
+      'Todoist',
+      'Zendesk',
+      'Freshdesk',
+    ],
+  },
+  {
+    label: 'Forms and surveys',
+    options: [
+      'Google Forms',
+      'Microsoft Forms',
+      'Jotform',
+      'Typeform',
+      'SurveyMonkey',
+      'Cognito Forms',
+    ],
+  },
+  {
+    label: 'Staff, shifts and field work',
+    options: [
+      'When I Work',
+      'Deputy',
+      'Homebase',
+      'ServiceTitan',
+      'Jobber',
+      'Housecall Pro',
+      'Fleetio',
+    ],
+  },
+  {
+    label: 'People and payroll',
+    options: [
+      'ADP',
+      'Gusto',
+      'Paychex',
+      'Rippling',
+      'BambooHR',
+    ],
+  },
+  {
+    label: 'Websites, stores and automation',
+    options: [
+      'WordPress',
+      'Squarespace',
+      'Wix',
+      'Webflow',
+      'Shopify',
+      'Zapier',
+      'Make',
+      'Power Automate',
+    ],
+  },
+];
+
+/** Every pickable label, flat. Used to reject anything the form did not offer. */
+export const TOOL_CHOICES = TOOL_CHOICE_GROUPS.flatMap((g) => g.options);
+
+
 /* -------------------------------------------------------------- the schema */
 
 export const BRIEF_SCHEMA = obj({
@@ -442,7 +623,7 @@ function walk(value, schema, path, errors) {
  * The plain form shown when JavaScript is unavailable, when the model is, or
  * when the visitor simply prefers a form -- and there are plenty of those.
  *
- * Eleven fields, chosen because between them they answer enough of the schema
+ * A dozen fields, chosen because between them they answer enough of the schema
  * above for a human to pick up the phone. The Worker feeds these answers
  * through a single structuring call, and stores and emails them verbatim even
  * if that call fails. Nothing on this path depends on AI succeeding.
@@ -451,12 +632,16 @@ function walk(value, schema, path, errors) {
  * @typedef {object} FormField
  * @property {string} name
  * @property {string} label
- * @property {'text'|'email'|'textarea'|'select'|'checkbox'} type
+ * @property {'text'|'email'|'textarea'|'select'|'checkbox'|'pills'} type
  * @property {boolean} required
  * @property {string} [hint]
  * @property {number} [rows]
  * @property {'name'|'email'|'organization'} [autocomplete]
  * @property {{value: string, label: string}[]} [options]
+ * @property {{label: string, options: string[]}[]} [groups] Pills only: the
+ *   choices, in labelled groups. The label is the value — there is no separate
+ *   key, because these are read by a person and by the model, not joined to
+ *   anything.
  */
 
 /** @type {FormField[]} */
@@ -482,10 +667,17 @@ export const FORM_FIELDS = [
   },
   {
     name: 'tools',
-    label: 'What software do you already use for this?',
-    hint: 'For example Google Sheets, QuickBooks, Outlook, Slack.',
-    type: 'textarea',
-    rows: 2,
+    label: 'What do you already use for this?',
+    hint: 'Pick as many as apply. Spreadsheets, paper, another app, or nothing yet — all fine answers.',
+    type: 'pills',
+    required: false,
+    groups: TOOL_CHOICE_GROUPS,
+  },
+  {
+    name: 'toolsOther',
+    label: 'Anything else you use',
+    hint: 'Whatever the list above missed, in your own words.',
+    type: 'text',
     required: false,
   },
   {
