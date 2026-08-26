@@ -8,7 +8,7 @@ links:
   linkedin: ''
   github: ''
   email: ''
-draft: false
+draft: true
 ---
 
 Josh is a business executive with more than 20 years spent building and running
