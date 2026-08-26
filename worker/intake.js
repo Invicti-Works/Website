@@ -572,6 +572,25 @@ async function conversationTurn({ request, env, data, store, now, newId, sendEma
  * comment above it and would have silently swallowed every lead the day the
  * home page stopped offering a second form.
  */
+/**
+ * One form answer as text, for the email and for the model.
+ *
+ * The pills post as a repeated key, so `data.tools` is an array of the labels
+ * ticked (or a bare string when exactly one was). Anything not on the list we
+ * offered is dropped rather than passed on: the values arrive from the client
+ * and nothing downstream should have to wonder whether a label is ours.
+ */
+function answerText(value, field) {
+  if (field.type === 'pills') {
+    const offered = new Set(field.groups?.flatMap((g) => g.options) ?? []);
+    const picked = (Array.isArray(value) ? value : [value])
+      .map((v) => String(v ?? '').trim())
+      .filter((v) => offered.has(v));
+    return picked.join(', ');
+  }
+  return String(Array.isArray(value) ? value.join(', ') : (value ?? '')).trim();
+}
+
 async function formSubmission({ request, env, data, store, now, newId, sendEmail, deps }) {
   const name = String(data.name ?? '').trim();
   const email = String(data.email ?? '').trim();
@@ -586,7 +605,7 @@ async function formSubmission({ request, env, data, store, now, newId, sendEmail
   }
 
   const answers = FORM_FIELDS.map((field) => {
-    const value = String(data[field.name] ?? '').trim();
+    const value = answerText(data[field.name], field);
     return value ? `${field.label}\n${value}` : null;
   })
     .filter(Boolean)
